@@ -364,7 +364,7 @@ async def update_document_tags(
             )
 
         # Replace all tags
-        document.tags = tags
+        document.tags = tags  # type: ignore[assignment]
     else:
         # Clear all tags
         document.tags = []

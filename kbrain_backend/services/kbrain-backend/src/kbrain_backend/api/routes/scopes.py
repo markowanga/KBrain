@@ -1,6 +1,6 @@
 """Scope API routes."""
 
-from typing import Optional
+from typing import Optional, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -28,10 +28,10 @@ async def list_scopes(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     is_active: Optional[bool] = Query(None),
-    sort: str = Query("created_at", regex="^(name|created_at)$"),
-    order: str = Query("desc", regex="^(asc|desc)$"),
+    sort: str = Query("created_at", pattern="^(name|created_at)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
     db: AsyncSession = Depends(get_db),
-):
+) -> ScopeListResponse:
     """List all scopes with pagination."""
     # Build query
     query = select(Scope)
@@ -74,7 +74,7 @@ async def list_scopes(
         total_size = await db.scalar(total_size_query) or 0
 
         scope_item = ScopeListItem(
-            id=scope.id,
+            id=cast(UUID, scope.id),
             name=scope.name,
             description=scope.description,
             allowed_extensions=scope.allowed_extensions,
@@ -88,12 +88,13 @@ async def list_scopes(
         scope_items.append(scope_item)
 
     # Pagination metadata
-    total_pages = (total_items + per_page - 1) // per_page if total_items else 0
+    total_items_count = total_items or 0
+    total_pages = (total_items_count + per_page - 1) // per_page if total_items_count else 0
     pagination = PaginationResponse(
         page=page,
         per_page=per_page,
         total_pages=total_pages,
-        total_items=total_items,
+        total_items=total_items_count,
         has_next=page < total_pages,
         has_prev=page > 1,
     )
@@ -105,7 +106,7 @@ async def list_scopes(
 async def get_scope(
     scope_id: UUID,
     db: AsyncSession = Depends(get_db),
-):
+) -> ScopeResponse:
     """Get a specific scope by ID."""
     query = select(Scope).where(Scope.id == scope_id)
     result = await db.execute(query)
@@ -146,7 +147,7 @@ async def get_scope(
     )
 
     response = ScopeResponse(
-        id=scope.id,
+        id=cast(UUID, scope.id),
         name=scope.name,
         description=scope.description,
         allowed_extensions=scope.allowed_extensions,
@@ -165,7 +166,7 @@ async def get_scope(
 async def create_scope(
     scope_data: ScopeCreate,
     db: AsyncSession = Depends(get_db),
-):
+) -> ScopeResponse:
     """Create a new scope."""
     # Check if scope with same name exists
     existing_query = select(Scope).where(Scope.name == scope_data.name)
@@ -197,7 +198,7 @@ async def create_scope(
     await db.refresh(scope)
 
     return ScopeResponse(
-        id=scope.id,
+        id=cast(UUID, scope.id),
         name=scope.name,
         description=scope.description,
         allowed_extensions=scope.allowed_extensions,
@@ -214,7 +215,7 @@ async def update_scope(
     scope_id: UUID,
     scope_data: ScopeUpdate,
     db: AsyncSession = Depends(get_db),
-):
+) -> ScopeResponse:
     """Update an existing scope."""
     query = select(Scope).where(Scope.id == scope_id)
     result = await db.execute(query)
@@ -258,7 +259,7 @@ async def update_scope(
     await db.refresh(scope)
 
     return ScopeResponse(
-        id=scope.id,
+        id=cast(UUID, scope.id),
         name=scope.name,
         description=scope.description,
         allowed_extensions=scope.allowed_extensions,
@@ -275,7 +276,7 @@ async def delete_scope(
     scope_id: UUID,
     hard_delete: bool = Query(False),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     """Delete a scope (soft delete by default, hard delete if specified)."""
     query = select(Scope).where(Scope.id == scope_id)
     result = await db.execute(query)

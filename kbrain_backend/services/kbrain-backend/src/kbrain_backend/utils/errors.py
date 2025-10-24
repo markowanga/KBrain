@@ -1,6 +1,6 @@
 """Error handling utilities."""
 
-from typing import Optional
+from typing import Optional, List, Dict, Any
 
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
@@ -16,7 +16,7 @@ class APIError(Exception):
         code: str,
         message: str,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
-        details: Optional[list] = None,
+        details: Optional[List[Dict[str, Any]]] = None,
     ):
         self.code = code
         self.message = message
@@ -40,7 +40,7 @@ class ValidationError(APIError):
     """Validation error."""
 
     def __init__(
-        self, message: str = "Validation failed", details: Optional[list] = None
+        self, message: str = "Validation failed", details: Optional[List[Dict[str, Any]]] = None
     ):
         super().__init__(
             code="VALIDATION_ERROR",
@@ -74,7 +74,7 @@ class StorageError(APIError):
 
 async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
     """Handle custom API errors."""
-    error_response = {
+    error_response: Dict[str, Any] = {
         "error": {
             "code": exc.code,
             "message": exc.message,

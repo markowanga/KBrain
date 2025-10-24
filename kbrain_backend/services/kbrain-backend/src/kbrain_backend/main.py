@@ -2,11 +2,12 @@
 
 import os
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, AsyncIterator, Any, Dict
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Response
+from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from kbrain_backend.config.settings import settings
@@ -46,7 +47,7 @@ else:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Application lifespan manager."""
     # Startup
     logger.info("Starting KBrain API...")
@@ -92,9 +93,9 @@ app.add_middleware(
 )
 
 # Register error handlers
-app.add_exception_handler(APIError, api_error_handler)
-app.add_exception_handler(RequestValidationError, validation_error_handler)
-app.add_exception_handler(SQLAlchemyError, database_error_handler)
+app.add_exception_handler(APIError, api_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(SQLAlchemyError, database_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Register routers
@@ -108,7 +109,7 @@ app.include_router(health.router, prefix="")  # Health endpoints at root
 
 # Root endpoint
 @app.get("/")
-async def root():
+async def root() -> Dict[str, str]:
     """Root endpoint."""
     return {
         "message": "Welcome to KBrain API",
@@ -119,7 +120,7 @@ async def root():
 
 
 @app.get("/api/health")
-async def legacy_health():
+async def legacy_health() -> Dict[str, str]:
     """Legacy health check endpoint (for backward compatibility)."""
     return {
         "status": "healthy",
@@ -131,7 +132,7 @@ async def legacy_health():
 
 # Legacy file storage endpoints (for backward compatibility)
 @app.post("/api/files/upload")
-async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] = None):
+async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] = None) -> Dict[str, Any]:
     """
     Legacy file upload endpoint (for backward compatibility).
     Use /v1/scopes/{scope_id}/documents for new implementations.
@@ -139,6 +140,8 @@ async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] =
     try:
         # Use provided path or original filename
         file_path = path if path else file.filename
+        if not file_path:
+            raise HTTPException(status_code=400, detail="No file path or filename provided")
 
         # Read file content
         content = await file.read()
@@ -155,7 +158,7 @@ async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] =
 
 
 @app.get("/api/files/download/{path:path}")
-async def legacy_download_file(path: str):
+async def legacy_download_file(path: str) -> Response:
     """
     Legacy file download endpoint (for backward compatibility).
     Use /v1/documents/{document_id}/content for new implementations.
@@ -179,7 +182,7 @@ async def legacy_download_file(path: str):
 
 
 @app.get("/api/files/read/{path:path}")
-async def read_file(path: str):
+async def read_file(path: str) -> Dict[str, Any]:
     """
     Read a file from kbrain_storage and return as JSON.
 
@@ -213,7 +216,7 @@ async def read_file(path: str):
 
 
 @app.get("/api/files/exists/{path:path}")
-async def check_file_exists(path: str):
+async def check_file_exists(path: str) -> Dict[str, Any]:
     """
     Check if a file exists.
 
@@ -225,7 +228,7 @@ async def check_file_exists(path: str):
 
 
 @app.get("/api/files/list")
-async def legacy_list_files(path: str = "", recursive: bool = False):
+async def legacy_list_files(path: str = "", recursive: bool = False) -> Dict[str, Any]:
     """
     Legacy file list endpoint (for backward compatibility).
     Use /v1/scopes/{scope_id}/documents for new implementations.
@@ -235,7 +238,7 @@ async def legacy_list_files(path: str = "", recursive: bool = False):
 
 
 @app.delete("/api/files/delete/{path:path}")
-async def legacy_delete_file(path: str):
+async def legacy_delete_file(path: str) -> Dict[str, Any]:
     """
     Legacy file delete endpoint (for backward compatibility).
     Use /v1/documents/{document_id} for new implementations.
@@ -249,7 +252,7 @@ async def legacy_delete_file(path: str):
 
 
 @app.get("/api/files/info/{path:path}")
-async def get_file_info(path: str):
+async def get_file_info(path: str) -> Dict[str, Any]:
     """
     Get file information.
 
@@ -267,7 +270,7 @@ async def get_file_info(path: str):
 
 
 @app.post("/api/files/directory")
-async def create_directory(path: str):
+async def create_directory(path: str) -> Dict[str, Any]:
     """
     Create a directory.
 

@@ -4,7 +4,7 @@ import hashlib
 import mimetypes
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
@@ -38,7 +38,7 @@ router = APIRouter(tags=["documents"])
 _storage: Optional[BaseFileStorage] = None
 
 
-def set_storage(storage: BaseFileStorage):
+def set_storage(storage: BaseFileStorage) -> None:
     """Set the storage backend."""
     global _storage
     _storage = storage
@@ -61,11 +61,11 @@ async def list_documents(
     per_page: int = Query(50, ge=1, le=200),
     status_filter: Optional[str] = Query(None, alias="status"),
     extension: Optional[str] = Query(None),
-    sort: str = Query("upload_date", regex="^(upload_date|file_size|original_name)$"),
-    order: str = Query("desc", regex="^(asc|desc)$"),
+    sort: str = Query("upload_date", pattern="^(upload_date|file_size|original_name)$"),
+    order: str = Query("desc", pattern="^(asc|desc)$"),
     search: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-):
+) -> DocumentListResponse:
     """List documents in a scope."""
     # Verify scope exists
     scope_query = select(Scope).where(Scope.id == scope_id)
@@ -106,12 +106,13 @@ async def list_documents(
     documents = result.scalars().all()
 
     # Pagination metadata
-    total_pages = (total_items + per_page - 1) // per_page if total_items else 0
+    total_items_count = total_items or 0
+    total_pages = (total_items_count + per_page - 1) // per_page if total_items_count else 0
     pagination = PaginationResponse(
         page=page,
         per_page=per_page,
         total_pages=total_pages,
-        total_items=total_items,
+        total_items=total_items_count,
         has_next=page < total_pages,
         has_prev=page > 1,
     )
@@ -125,7 +126,7 @@ async def list_documents(
 async def get_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
-):
+) -> DocumentDetailResponse:
     """Get details of a specific document."""
     query = select(Document).where(Document.id == document_id)
     result = await db.execute(query)
@@ -142,8 +143,8 @@ async def get_document(
     scope = await db.scalar(scope_query)
 
     response = DocumentDetailResponse(
-        id=document.id,
-        scope_id=document.scope_id,
+        id=cast(UUID, document.id),
+        scope_id=cast(UUID, document.scope_id),
         scope_name=scope.name if scope else None,
         filename=document.filename,
         original_name=document.original_name,
@@ -178,7 +179,7 @@ async def upload_document(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     storage: BaseFileStorage = Depends(get_storage),
-):
+) -> DocumentUploadResponse:
     """Upload a new document to a scope."""
     # Verify scope exists and is active
     scope_query = select(Scope).where(Scope.id == scope_id, Scope.is_active)
@@ -242,7 +243,7 @@ async def upload_document(
     sha256_hash = hashlib.sha256(content).hexdigest()
 
     # Get MIME type
-    mime_type, _ = mimetypes.guess_type(file.filename)
+    mime_type, _ = mimetypes.guess_type(file.filename or "")
 
     # Save file to storage
     try:
@@ -284,8 +285,8 @@ async def upload_document(
     await db.refresh(document)
 
     return DocumentUploadResponse(
-        id=document.id,
-        scope_id=document.scope_id,
+        id=cast(UUID, document.id),
+        scope_id=cast(UUID, document.scope_id),
         filename=document.filename,
         original_name=document.original_name,
         file_size=document.file_size,
@@ -305,7 +306,7 @@ async def get_download_url(
     document_id: UUID,
     expiration: int = Query(3600, ge=1, le=86400),
     db: AsyncSession = Depends(get_db),
-):
+) -> DownloadUrlResponse:
     """Get a download URL for a document."""
     query = select(Document).where(Document.id == document_id)
     result = await db.execute(query)
@@ -334,7 +335,7 @@ async def download_document_content(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     storage: BaseFileStorage = Depends(get_storage),
-):
+) -> StreamingResponse:
     """Directly download document content (proxy download)."""
     query = select(Document).where(Document.id == document_id)
     result = await db.execute(query)
@@ -382,7 +383,7 @@ async def delete_document(
     delete_storage: bool = Query(True),
     db: AsyncSession = Depends(get_db),
     storage: BaseFileStorage = Depends(get_storage),
-):
+) -> None:
     """Delete a document."""
     query = select(Document).where(Document.id == document_id)
     result = await db.execute(query)
@@ -414,7 +415,7 @@ async def update_document_status(
     document_id: UUID,
     status_update: DocumentStatusUpdate,
     db: AsyncSession = Depends(get_db),
-):
+) -> DocumentResponse:
     """Update document status."""
     query = select(Document).where(Document.id == document_id)
     result = await db.execute(query)
@@ -454,7 +455,7 @@ async def update_document_metadata(
     document_id: UUID,
     metadata_update: DocumentMetadataUpdate,
     db: AsyncSession = Depends(get_db),
-):
+) -> DocumentResponse:
     """Update document metadata."""
     query = select(Document).where(Document.id == document_id)
     result = await db.execute(query)

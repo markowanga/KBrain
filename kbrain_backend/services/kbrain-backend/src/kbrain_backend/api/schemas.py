@@ -53,7 +53,7 @@ class ScopeBase(BaseModel):
 
     name: str = Field(..., min_length=3, max_length=255)
     description: Optional[str] = None
-    allowed_extensions: List[str] = Field(..., min_items=1)
+    allowed_extensions: List[str] = Field(..., min_length=1)
     storage_backend: Optional[str] = Field(None, max_length=50)
     storage_config: Optional[Dict[str, Any]] = None
 
@@ -69,7 +69,7 @@ class ScopeUpdate(BaseModel):
 
     name: Optional[str] = Field(None, min_length=3, max_length=255)
     description: Optional[str] = None
-    allowed_extensions: Optional[List[str]] = Field(None, min_items=1)
+    allowed_extensions: Optional[List[str]] = Field(None, min_length=1)
     is_active: Optional[bool] = None
 
 

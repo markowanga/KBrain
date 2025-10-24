@@ -1,5 +1,6 @@
 """Statistics API routes."""
 
+from typing import List, Dict, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -138,7 +139,7 @@ async def get_scope_statistics(
         documents_by_extension[ext] = count
 
     # Upload timeline (simplified)
-    upload_timeline = []
+    upload_timeline: List[Dict[str, Any]] = []
 
     # Processing performance (simplified)
     processing_performance = {

@@ -22,6 +22,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "types-aiofiles>=24.1.0",
     "poethepoet>=0.31.0",
 ]
 
@@ -30,6 +32,31 @@ lint = "ruff check ."
 lint-fix = "ruff check --fix ."
 format = "ruff format ."
 format-check = "ruff format --check ."
+typecheck = "mypy --strict ."
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+show_error_codes = true
+exclude = [
+    "test_.*\\.py$",
+]
+
+[[tool.mypy.overrides]]
+module = "kbrain_backend.core.models.*"
+disable_error_code = ["misc", "type-arg"]
+
+[[tool.mypy.overrides]]
+module = "kbrain_backend.api.routes.*"
+disable_error_code = ["no-untyped-def"]
 
 [tool.uv.workspace]
 members = [
