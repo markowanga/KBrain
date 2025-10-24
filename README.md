@@ -14,9 +14,43 @@ KBrain is a comprehensive knowledge management system that allows you to organiz
 - **Modern Frontend**: Intuitive web interface for document and scope management
 - **Extensible Architecture**: Easy to extend with custom processing logic
 
+## Quick Start
+
+Get KBrain up and running with Docker Compose:
+
+```bash
+# Clone the repository
+git clone https://github.com/markowanga/KBrain.git
+cd KBrain
+
+# Start all services
+docker-compose up
+
+# Access the application
+# Frontend: http://localhost:5173
+# Backend API: http://localhost:8000
+# API Docs: http://localhost:8000/docs
+```
+
+### Manual Setup (without Docker)
+
+**Backend:**
+```bash
+cd kbrain_backend
+uv sync
+uv run uvicorn main:app --reload
+```
+
+**Frontend:**
+```bash
+cd kbrain_frontend
+npm install
+npm run dev
+```
+
 ## Project Status
 
-This project is currently in the **planning and design phase**. All architectural documentation has been completed and is ready for implementation.
+This project is currently in **active development**. Basic project structure with FastAPI backend and React frontend has been implemented.
 
 ## Documentation
 
