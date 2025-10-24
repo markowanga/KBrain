@@ -1,0 +1,10 @@
+# Storage data directories
+kbrain_backend/data/
+kbrain_backend/test_data/
+*.backup
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
