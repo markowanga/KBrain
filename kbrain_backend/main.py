@@ -1,60 +1,124 @@
+"""KBrain Backend API - Main application entry point."""
 import os
+from contextlib import asynccontextmanager
 from typing import Optional
-from fastapi import FastAPI, HTTPException, UploadFile, File
+
+from fastapi import FastAPI, HTTPException, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
-from pydantic import BaseModel
+from fastapi.exceptions import RequestValidationError
+from sqlalchemy.exc import SQLAlchemyError
 import uvicorn
 
+from src.config.settings import settings
+from src.database.connection import init_db, close_db
+from src.api.routes import scopes, documents, statistics, health
+from src.api.routes.documents import set_storage
+from src.utils.errors import (
+    APIError,
+    api_error_handler,
+    validation_error_handler,
+    general_exception_handler,
+    database_error_handler,
+)
+from src.utils.logger import logger
+
+# Storage backend initialization
 from kbrain_backend.libs.storage.src.kbrain_storage.storage import BaseFileStorage, LocalFileStorage
 
-# Storage configuration (can be set via environment variable)
-STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")  # "local", "s3", or "azure"
-STORAGE_ROOT = os.getenv("STORAGE_ROOT", "storage_data")
+# Storage configuration
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", settings.storage_backend)
+STORAGE_ROOT = os.getenv("STORAGE_ROOT", settings.storage_root)
 
-app = FastAPI(title="KBrain API")
-
-# Initialize kbrain_storage backend
+# Initialize storage backend
 storage: BaseFileStorage
 
 if STORAGE_BACKEND == "local":
     storage = LocalFileStorage(root_path=STORAGE_ROOT)
-    print(f"Using local file kbrain_storage in '{STORAGE_ROOT}' directory")
+    logger.info(f"Using local file storage in '{STORAGE_ROOT}' directory")
 elif STORAGE_BACKEND == "s3":
     # TODO: Implement S3 initialization
-    raise NotImplementedError("S3 kbrain_storage not yet implemented")
+    raise NotImplementedError("S3 storage not yet implemented")
 elif STORAGE_BACKEND == "azure":
     # TODO: Implement Azure initialization
-    raise NotImplementedError("Azure Blob kbrain_storage not yet implemented")
+    raise NotImplementedError("Azure Blob storage not yet implemented")
 else:
-    raise ValueError(f"Unknown kbrain_storage backend: {STORAGE_BACKEND}")
+    raise ValueError(f"Unknown storage backend: {STORAGE_BACKEND}")
 
-# CORS configuration for frontend
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager."""
+    # Startup
+    logger.info("Starting KBrain API...")
+    logger.info(f"Database URL: {settings.database_url}")
+    logger.info(f"Storage Backend: {STORAGE_BACKEND}")
+
+    # Initialize database
+    try:
+        await init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+
+    # Set storage for document routes
+    set_storage(storage)
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down KBrain API...")
+    await close_db()
+    logger.info("Database connections closed")
+
+
+# Create FastAPI application
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    description="Knowledge Management System with Flexible Document Processing",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/v1/openapi.json",
+)
+
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Register error handlers
+app.add_exception_handler(APIError, api_error_handler)
+app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(SQLAlchemyError, database_error_handler)
+app.add_exception_handler(Exception, general_exception_handler)
 
-# Pydantic models for API requests
-class SaveFileRequest(BaseModel):
-    path: str
-    content: str  # Base64 encoded or plain text
-    overwrite: bool = True
+# Register routers
+app.include_router(scopes.router, prefix="/v1")
+app.include_router(documents.router, prefix="")  # Documents have full paths
+app.include_router(statistics.router, prefix="/v1")
+app.include_router(health.router, prefix="")  # Health endpoints at root
 
 
-# Basic endpoints
+# Root endpoint
 @app.get("/")
 async def root():
-    return {"message": "Hello World from KBrain API!"}
+    """Root endpoint."""
+    return {
+        "message": "Welcome to KBrain API",
+        "version": settings.app_version,
+        "docs": "/docs",
+        "health": "/health",
+    }
 
 
 @app.get("/api/health")
-async def health():
-    """Health check endpoint."""
+async def legacy_health():
+    """Legacy health check endpoint (for backward compatibility)."""
     return {
         "status": "healthy",
         "service": "kbrain-backend",
@@ -63,18 +127,15 @@ async def health():
     }
 
 
-# File Storage API endpoints
+# Legacy file storage endpoints (for backward compatibility)
 @app.post("/api/files/upload")
-async def upload_file(
+async def legacy_upload_file(
     file: UploadFile = File(...),
     path: Optional[str] = None
 ):
     """
-    Upload a file to kbrain_storage.
-
-    Args:
-        file: The file to upload
-        path: Optional custom path (defaults to original filename)
+    Legacy file upload endpoint (for backward compatibility).
+    Use /v1/scopes/{scope_id}/documents for new implementations.
     """
     try:
         # Use provided path or original filename
@@ -99,12 +160,10 @@ async def upload_file(
 
 
 @app.get("/api/files/download/{path:path}")
-async def download_file(path: str):
+async def legacy_download_file(path: str):
     """
-    Download a file from kbrain_storage.
-
-    Args:
-        path: File path in kbrain_storage
+    Legacy file download endpoint (for backward compatibility).
+    Use /v1/documents/{document_id}/content for new implementations.
     """
     content = await storage.read_file(path)
 
@@ -169,16 +228,13 @@ async def check_file_exists(path: str):
 
 
 @app.get("/api/files/list")
-async def list_files(
+async def legacy_list_files(
     path: str = "",
     recursive: bool = False
 ):
     """
-    List files in directory.
-
-    Args:
-        path: Directory path (empty for root)
-        recursive: Whether to list recursively
+    Legacy file list endpoint (for backward compatibility).
+    Use /v1/scopes/{scope_id}/documents for new implementations.
     """
     files = await storage.list_directory(path, recursive)
     return {
@@ -189,12 +245,10 @@ async def list_files(
 
 
 @app.delete("/api/files/delete/{path:path}")
-async def delete_file(path: str):
+async def legacy_delete_file(path: str):
     """
-    Delete a file from kbrain_storage.
-
-    Args:
-        path: File path in kbrain_storage
+    Legacy file delete endpoint (for backward compatibility).
+    Use /v1/documents/{document_id} for new implementations.
     """
     success = await storage.delete_file(path)
 
@@ -243,4 +297,9 @@ async def create_directory(path: str):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host=settings.host,
+        port=settings.port,
+        log_level=settings.log_level.lower(),
+    )
