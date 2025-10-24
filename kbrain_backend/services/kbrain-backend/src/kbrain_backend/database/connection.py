@@ -46,9 +46,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db() -> None:
-    """Initialize database tables."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """
+    Initialize database connection.
+
+    Note: Database schema is now managed by Alembic migrations.
+    To create/update tables, run: alembic upgrade head
+    """
+    # Database schema is managed by Alembic migrations
+    pass
 
 
 async def close_db() -> None:
