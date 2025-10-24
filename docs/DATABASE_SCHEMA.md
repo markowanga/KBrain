@@ -117,7 +117,7 @@ CREATE TABLE documents (
     file_size           BIGINT NOT NULL,  -- Size in bytes
     mime_type           VARCHAR(255),
     file_extension      VARCHAR(50) NOT NULL,
-    storage_path        TEXT NOT NULL,  -- Full path in storage backend
+    storage_path        TEXT NOT NULL,  -- Full path in kbrain_storage backend
     storage_backend     VARCHAR(50) NOT NULL,  -- Inherited from scope or override
     checksum_md5        VARCHAR(32),  -- MD5 hash for integrity
     checksum_sha256     VARCHAR(64),  -- SHA-256 hash for integrity

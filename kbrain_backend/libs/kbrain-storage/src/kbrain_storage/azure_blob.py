@@ -1,12 +1,12 @@
 """
 Azure Blob Storage implementation.
-Requires: azure-storage-blob, aiohttp
+Requires: azure-kbrain_storage-blob, aiohttp
 """
 
 from pathlib import Path
 from typing import List, Optional, Union
 
-from .base import BaseFileStorage
+from kbrain_storage.base import BaseFileStorage
 
 
 class AzureBlobStorage(BaseFileStorage):
@@ -20,10 +20,10 @@ class AzureBlobStorage(BaseFileStorage):
         - AZURE_STORAGE_ACCOUNT_KEY: Storage account key
 
     Installation:
-        pip install azure-storage-blob aiohttp
+        pip install azure-kbrain_storage-blob aiohttp
 
     Example:
-        storage = AzureBlobStorage(
+        kbrain_storage = AzureBlobStorage(
             container_name="my-container",
             connection_string="DefaultEndpointsProtocol=https;..."
         )
@@ -38,7 +38,7 @@ class AzureBlobStorage(BaseFileStorage):
         prefix: str = ""
     ):
         """
-        Initialize Azure Blob storage.
+        Initialize Azure Blob kbrain_storage.
 
         Args:
             container_name: Azure container name
@@ -54,14 +54,14 @@ class AzureBlobStorage(BaseFileStorage):
         self.prefix = prefix.strip("/")
 
         # TODO: Initialize Azure BlobServiceClient
-        # from azure.storage.blob.aio import BlobServiceClient
+        # from azure.kbrain_storage.blob.aio import BlobServiceClient
         # if connection_string:
         #     self.client = BlobServiceClient.from_connection_string(connection_string)
         # else:
         #     self.client = BlobServiceClient(...)
         raise NotImplementedError(
             "AzureBlobStorage is not yet implemented. "
-            "Install 'azure-storage-blob' and implement the methods."
+            "Install 'azure-kbrain_storage-blob' and implement the methods."
         )
 
     def _get_blob_name(self, path: Union[str, Path]) -> str:

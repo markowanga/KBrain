@@ -1,5 +1,5 @@
 """
-Abstract base class for file storage implementations.
+Abstract base class for file kbrain_storage implementations.
 Supports Local filesystem, AWS S3, and Azure Blob Storage.
 """
 
@@ -10,8 +10,8 @@ from typing import List, Optional, Union
 
 class BaseFileStorage(ABC):
     """
-    Abstract base class for file storage backends.
-    Provides a consistent async interface for different storage implementations.
+    Abstract base class for file kbrain_storage backends.
+    Provides a consistent async interface for different kbrain_storage implementations.
     """
 
     @abstractmethod
@@ -22,10 +22,10 @@ class BaseFileStorage(ABC):
         overwrite: bool = True
     ) -> bool:
         """
-        Save file to storage.
+        Save file to kbrain_storage.
 
         Args:
-            path: File path (relative to storage root)
+            path: File path (relative to kbrain_storage root)
             content: File content as bytes
             overwrite: Whether to overwrite existing file
 
@@ -37,10 +37,10 @@ class BaseFileStorage(ABC):
     @abstractmethod
     async def read_file(self, path: Union[str, Path]) -> Optional[bytes]:
         """
-        Read file from storage.
+        Read file from kbrain_storage.
 
         Args:
-            path: File path (relative to storage root)
+            path: File path (relative to kbrain_storage root)
 
         Returns:
             File content as bytes, or None if not found
@@ -74,14 +74,14 @@ class BaseFileStorage(ABC):
             recursive: Whether to list recursively
 
         Returns:
-            List of file paths (relative to storage root)
+            List of file paths (relative to kbrain_storage root)
         """
         pass
 
     @abstractmethod
     async def delete_file(self, path: Union[str, Path]) -> bool:
         """
-        Delete file from storage.
+        Delete file from kbrain_storage.
 
         Args:
             path: File path

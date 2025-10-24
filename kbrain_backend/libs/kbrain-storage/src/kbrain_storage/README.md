@@ -100,7 +100,7 @@ storage = AzureBlobStorage(
 
 **Requirements**:
 ```bash
-pip install azure-storage-blob aiohttp
+pip install azure-kbrain_storage-blob aiohttp
 ```
 
 **Configuration**:
@@ -214,7 +214,7 @@ Set storage backend via environment variables:
 # Storage backend type
 export STORAGE_BACKEND=local  # or "s3" or "azure"
 
-# Local storage root directory
+# Local kbrain_storage root directory
 export STORAGE_ROOT=storage_data
 
 # AWS S3 configuration (if using S3)
@@ -469,8 +469,8 @@ class DropboxStorage(BaseFileStorage):
 
 ### Permission Errors
 ```python
-# Ensure storage root is writable
-storage = LocalFileStorage(root_path="/tmp/storage")
+# Ensure kbrain_storage root is writable
+storage = LocalFileStorage(root_path="/tmp/kbrain_storage")
 ```
 
 ### Path Not Found

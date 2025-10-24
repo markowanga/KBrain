@@ -412,7 +412,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 - Go: `github.com/Azure/azure-sdk-for-go/sdk/storage/azblob`
 
 ```typescript
-import { BlobServiceClient } from '@azure/storage-blob';
+import { BlobServiceClient } from '@azure/kbrain_storage-blob';
 ```
 
 ---

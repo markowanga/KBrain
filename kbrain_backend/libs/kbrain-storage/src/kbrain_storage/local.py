@@ -1,5 +1,5 @@
 """
-Local filesystem storage implementation.
+Local filesystem kbrain_storage implementation.
 Uses pathlib for cross-platform file operations.
 """
 
@@ -9,21 +9,21 @@ from typing import List, Optional, Union
 import aiofiles
 import aiofiles.os
 
-from .base import BaseFileStorage
+from kbrain_storage.base import BaseFileStorage
 
 
 class LocalFileStorage(BaseFileStorage):
     """
-    Local filesystem storage implementation.
+    Local filesystem kbrain_storage implementation.
     Stores files in a local directory using pathlib.
     """
 
     def __init__(self, root_path: Union[str, Path] = "storage_data"):
         """
-        Initialize local file storage.
+        Initialize local file kbrain_storage.
 
         Args:
-            root_path: Root directory for file storage
+            root_path: Root directory for file kbrain_storage
         """
         self.root_path = Path(root_path).resolve()
         self._lock = asyncio.Lock()
@@ -39,7 +39,7 @@ class LocalFileStorage(BaseFileStorage):
             path: Relative path
 
         Returns:
-            Absolute path within storage root
+            Absolute path within kbrain_storage root
 
         Raises:
             ValueError: If path tries to escape root directory
@@ -49,7 +49,7 @@ class LocalFileStorage(BaseFileStorage):
 
         # Prevent path traversal attacks
         if rel_path.is_absolute():
-            raise ValueError("Path must be relative to storage root")
+            raise ValueError("Path must be relative to kbrain_storage root")
 
         full_path = (self.root_path / rel_path).resolve()
 
@@ -57,7 +57,7 @@ class LocalFileStorage(BaseFileStorage):
         try:
             full_path.relative_to(self.root_path)
         except ValueError:
-            raise ValueError(f"Path {path} is outside storage root")
+            raise ValueError(f"Path {path} is outside kbrain_storage root")
 
         return full_path
 
@@ -79,7 +79,7 @@ class LocalFileStorage(BaseFileStorage):
             True if successful, False otherwise
 
         Raises:
-            ValueError: If path is invalid or outside storage root
+            ValueError: If path is invalid or outside kbrain_storage root
         """
         # This will raise ValueError if path is invalid
         full_path = self._resolve_path(path)
@@ -152,7 +152,7 @@ class LocalFileStorage(BaseFileStorage):
             recursive: Whether to list recursively
 
         Returns:
-            List of file paths (relative to storage root)
+            List of file paths (relative to kbrain_storage root)
         """
         try:
             if path == "":
@@ -287,7 +287,7 @@ class LocalFileStorage(BaseFileStorage):
         destination: Union[str, Path]
     ) -> bool:
         """
-        Copy file within storage.
+        Copy file within kbrain_storage.
 
         Args:
             source: Source file path
@@ -312,7 +312,7 @@ class LocalFileStorage(BaseFileStorage):
         destination: Union[str, Path]
     ) -> bool:
         """
-        Move file within storage.
+        Move file within kbrain_storage.
 
         Args:
             source: Source file path

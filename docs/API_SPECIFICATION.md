@@ -570,7 +570,7 @@ curl -X POST http://localhost:3000/v1/scopes/{scope_id}/documents/batch \
       "status": "error",
       "error": {
         "code": "STORAGE_ERROR",
-        "message": "Failed to upload to storage backend"
+        "message": "Failed to upload to kbrain_storage backend"
       }
     }
   ],

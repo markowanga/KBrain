@@ -2,6 +2,12 @@ version = 1
 revision = 3
 requires-python = ">=3.11"
 
+[manifest]
+members = [
+    "kbrain-backend",
+    "kbrain-storage",
+]
+
 [[package]]
 name = "aiofiles"
 version = "25.1.0"
@@ -149,6 +155,17 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.115.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32.0" },
 ]
+
+[[package]]
+name = "kbrain-storage"
+version = "0.1.0"
+source = { editable = "libs/kbrain-storage" }
+dependencies = [
+    { name = "aiofiles" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "aiofiles", specifier = ">=25.1.0" }]
 
 [[package]]
 name = "pydantic"

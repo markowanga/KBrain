@@ -1,17 +1,17 @@
 """
-AWS S3 storage implementation.
+AWS S3 kbrain_storage implementation.
 Requires: boto3, aioboto3
 """
 
 from pathlib import Path
 from typing import List, Optional, Union
 
-from .base import BaseFileStorage
+from kbrain_storage.base import BaseFileStorage
 
 
 class S3FileStorage(BaseFileStorage):
     """
-    AWS S3 storage implementation.
+    AWS S3 kbrain_storage implementation.
 
     Configuration:
         - AWS_ACCESS_KEY_ID: AWS access key
@@ -23,7 +23,7 @@ class S3FileStorage(BaseFileStorage):
         pip install aioboto3
 
     Example:
-        storage = S3FileStorage(
+        kbrain_storage = S3FileStorage(
             bucket_name="my-bucket",
             region="us-east-1"
         )
@@ -36,7 +36,7 @@ class S3FileStorage(BaseFileStorage):
         prefix: str = ""
     ):
         """
-        Initialize S3 storage.
+        Initialize S3 kbrain_storage.
 
         Args:
             bucket_name: S3 bucket name

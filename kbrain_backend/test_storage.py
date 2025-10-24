@@ -1,20 +1,20 @@
 """
-Test script for file storage implementations.
+Test script for file kbrain_storage implementations.
 Run with: python test_storage.py
 """
 
 import asyncio
 from pathlib import Path
-from storage import LocalFileStorage
+from kbrain_backend.libs.storage.src.kbrain_storage.storage import LocalFileStorage
 
 
 async def test_local_storage():
-    """Test local file storage."""
+    """Test local file kbrain_storage."""
     print("\n=== Testing LocalFileStorage ===")
 
-    # Initialize storage
+    # Initialize kbrain_storage
     storage = LocalFileStorage(root_path="test_storage_data")
-    print(f"Initialized storage at: {storage.root_path}")
+    print(f"Initialized kbrain_storage at: {storage.root_path}")
 
     # Test 1: Save and read file
     print("\n--- Test 1: Save and read file ---")

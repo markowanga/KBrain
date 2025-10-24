@@ -495,7 +495,7 @@ S3_BUCKET=kbrain-documents
 
 # Azure Blob
 AZURE_STORAGE_ACCOUNT=kbrainstorage
-AZURE_STORAGE_KEY=your-storage-key
+AZURE_STORAGE_KEY=your-kbrain_storage-key
 AZURE_STORAGE_CONTAINER=documents
 
 # SFTP
@@ -765,7 +765,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 // 2. Internal modules
 import { ScopeService } from '@/core/services/scope.service';
-import { IStorageProvider } from '@/storage/interfaces/storage-provider.interface';
+import { IStorageProvider } from '@/kbrain_storage/interfaces/kbrain_storage-provider.interface';
 
 // 3. Types
 import type { Scope, CreateScopeDto } from '@/types/scope.types';

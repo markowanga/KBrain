@@ -267,7 +267,7 @@ Local filesystem implementation (for development/testing).
 ```typescript
 interface LocalStorageConfiguration {
   type: 'local';
-  base_path: string;  // Absolute path to storage directory
+  base_path: string;  // Absolute path to kbrain_storage directory
   create_directories?: boolean;  // Auto-create directories
 }
 ```

@@ -9,3 +9,8 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "aiofiles>=24.1.0",
 ]
+
+[tool.uv.workspace]
+members = [
+    "libs/kbrain-storage",
+]

@@ -6,7 +6,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 import uvicorn
 
-from storage import BaseFileStorage, LocalFileStorage
+from kbrain_backend.libs.storage.src.kbrain_storage.storage import BaseFileStorage, LocalFileStorage
 
 # Storage configuration (can be set via environment variable)
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")  # "local", "s3", or "azure"
@@ -14,20 +14,20 @@ STORAGE_ROOT = os.getenv("STORAGE_ROOT", "storage_data")
 
 app = FastAPI(title="KBrain API")
 
-# Initialize storage backend
+# Initialize kbrain_storage backend
 storage: BaseFileStorage
 
 if STORAGE_BACKEND == "local":
     storage = LocalFileStorage(root_path=STORAGE_ROOT)
-    print(f"Using local file storage in '{STORAGE_ROOT}' directory")
+    print(f"Using local file kbrain_storage in '{STORAGE_ROOT}' directory")
 elif STORAGE_BACKEND == "s3":
     # TODO: Implement S3 initialization
-    raise NotImplementedError("S3 storage not yet implemented")
+    raise NotImplementedError("S3 kbrain_storage not yet implemented")
 elif STORAGE_BACKEND == "azure":
     # TODO: Implement Azure initialization
-    raise NotImplementedError("Azure Blob storage not yet implemented")
+    raise NotImplementedError("Azure Blob kbrain_storage not yet implemented")
 else:
-    raise ValueError(f"Unknown storage backend: {STORAGE_BACKEND}")
+    raise ValueError(f"Unknown kbrain_storage backend: {STORAGE_BACKEND}")
 
 # CORS configuration for frontend
 app.add_middleware(
@@ -70,7 +70,7 @@ async def upload_file(
     path: Optional[str] = None
 ):
     """
-    Upload a file to storage.
+    Upload a file to kbrain_storage.
 
     Args:
         file: The file to upload
@@ -83,7 +83,7 @@ async def upload_file(
         # Read file content
         content = await file.read()
 
-        # Save to storage
+        # Save to kbrain_storage
         success = await storage.save_file(file_path, content)
 
         if not success:
@@ -101,10 +101,10 @@ async def upload_file(
 @app.get("/api/files/download/{path:path}")
 async def download_file(path: str):
     """
-    Download a file from storage.
+    Download a file from kbrain_storage.
 
     Args:
-        path: File path in storage
+        path: File path in kbrain_storage
     """
     content = await storage.read_file(path)
 
@@ -126,10 +126,10 @@ async def download_file(path: str):
 @app.get("/api/files/read/{path:path}")
 async def read_file(path: str):
     """
-    Read a file from storage and return as JSON.
+    Read a file from kbrain_storage and return as JSON.
 
     Args:
-        path: File path in storage
+        path: File path in kbrain_storage
     """
     content = await storage.read_file(path)
 
@@ -162,7 +162,7 @@ async def check_file_exists(path: str):
     Check if a file exists.
 
     Args:
-        path: File path in storage
+        path: File path in kbrain_storage
     """
     exists = await storage.exists(path)
     return {"path": path, "exists": exists}
@@ -191,10 +191,10 @@ async def list_files(
 @app.delete("/api/files/delete/{path:path}")
 async def delete_file(path: str):
     """
-    Delete a file from storage.
+    Delete a file from kbrain_storage.
 
     Args:
-        path: File path in storage
+        path: File path in kbrain_storage
     """
     success = await storage.delete_file(path)
 
@@ -210,7 +210,7 @@ async def get_file_info(path: str):
     Get file information.
 
     Args:
-        path: File path in storage
+        path: File path in kbrain_storage
     """
     exists = await storage.exists(path)
 
