@@ -85,6 +85,39 @@ export interface ScopeUpdate {
 }
 
 // ============================================================================
+// Tag Types
+// ============================================================================
+
+export interface Tag {
+  id: string
+  scope_id: string
+  name: string
+  description: string | null
+  color: string | null
+  metadata: Record<string, any> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TagCreate {
+  name: string
+  description?: string | null
+  color?: string | null
+  metadata?: Record<string, any> | null
+}
+
+export interface TagUpdate {
+  name?: string
+  description?: string | null
+  color?: string | null
+  metadata?: Record<string, any> | null
+}
+
+export interface TagListResponse {
+  tags: Tag[]
+}
+
+// ============================================================================
 // Document Types
 // ============================================================================
 
@@ -119,6 +152,7 @@ export interface DocumentDetailResponse extends Document {
 
 export interface DocumentResponse extends Document {
   metadata?: Record<string, any> | null
+  tags?: Tag[]
 }
 
 export interface DocumentListResponse {
@@ -128,6 +162,11 @@ export interface DocumentListResponse {
 
 export interface DocumentUploadResponse extends Document {
   metadata: Record<string, any> | null
+  tags?: Tag[]
+}
+
+export interface DocumentTagsUpdate {
+  tag_ids: string[]
 }
 
 export interface DocumentStatusUpdate {
