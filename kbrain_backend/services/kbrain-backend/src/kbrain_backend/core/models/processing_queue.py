@@ -1,4 +1,5 @@
 """Processing queue database model."""
+
 from datetime import datetime
 from typing import Optional
 
@@ -16,7 +17,10 @@ class ProcessingQueue(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     document_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     priority: Mapped[int] = mapped_column(Integer, default=0, index=True)
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -31,9 +35,7 @@ class ProcessingQueue(Base):
         TIMESTAMP(timezone=True), nullable=True
     )
     worker_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(50), default="pending", index=True
-    )
+    status: Mapped[str] = mapped_column(String(50), default="pending", index=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=datetime.utcnow

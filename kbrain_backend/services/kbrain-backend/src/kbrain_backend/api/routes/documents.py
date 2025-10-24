@@ -1,4 +1,5 @@
 """Document API routes."""
+
 import hashlib
 import mimetypes
 from datetime import datetime
@@ -8,7 +9,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kbrain_backend.api.schemas import (
@@ -167,7 +168,11 @@ async def get_document(
     return response
 
 
-@router.post("/v1/scopes/{scope_id}/documents", response_model=DocumentUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/v1/scopes/{scope_id}/documents",
+    response_model=DocumentUploadResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def upload_document(
     scope_id: UUID,
     file: UploadFile = File(...),
@@ -176,17 +181,19 @@ async def upload_document(
 ):
     """Upload a new document to a scope."""
     # Verify scope exists and is active
-    scope_query = select(Scope).where(Scope.id == scope_id, Scope.is_active == True)
+    scope_query = select(Scope).where(Scope.id == scope_id, Scope.is_active)
     scope = await db.scalar(scope_query)
 
     if not scope:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "Scope not found or inactive"}},
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "Scope not found or inactive"}
+            },
         )
 
     # Get file extension
-    file_ext = Path(file.filename).suffix.lstrip('.').lower() if file.filename else ""
+    file_ext = Path(file.filename).suffix.lstrip(".").lower() if file.filename else ""
 
     # Validate file extension
     if file_ext not in scope.allowed_extensions:
@@ -223,7 +230,9 @@ async def upload_document(
         )
 
     # Generate unique filename
-    unique_filename = f"{datetime.now().strftime('%Y-%m-%d')}_{uuid4().hex[:12]}.{file_ext}"
+    unique_filename = (
+        f"{datetime.now().strftime('%Y-%m-%d')}_{uuid4().hex[:12]}.{file_ext}"
+    )
 
     # Generate storage path (scope-based)
     storage_path = f"scopes/{scope.name}/{datetime.now().year}/{datetime.now().month:02d}/{unique_filename}"
@@ -241,7 +250,12 @@ async def upload_document(
         if not success:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={"error": {"code": "STORAGE_ERROR", "message": "Failed to save file to storage"}},
+                detail={
+                    "error": {
+                        "code": "STORAGE_ERROR",
+                        "message": "Failed to save file to storage",
+                    }
+                },
             )
     except Exception as e:
         raise HTTPException(
@@ -338,7 +352,12 @@ async def download_document_content(
         if content is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": {"code": "NOT_FOUND", "message": "File not found in storage"}},
+                detail={
+                    "error": {
+                        "code": "NOT_FOUND",
+                        "message": "File not found in storage",
+                    }
+                },
             )
     except Exception as e:
         raise HTTPException(

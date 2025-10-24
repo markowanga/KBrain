@@ -1,4 +1,5 @@
 """Logging configuration."""
+
 import sys
 from loguru import logger
 from kbrain_backend.config.settings import settings

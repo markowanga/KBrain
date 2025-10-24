@@ -35,7 +35,7 @@ class AzureBlobStorage(BaseFileStorage):
         connection_string: Optional[str] = None,
         account_name: Optional[str] = None,
         account_key: Optional[str] = None,
-        prefix: str = ""
+        prefix: str = "",
     ):
         """
         Initialize Azure Blob kbrain_storage.
@@ -80,10 +80,7 @@ class AzureBlobStorage(BaseFileStorage):
         return path_str
 
     async def save_file(
-        self,
-        path: Union[str, Path],
-        content: bytes,
-        overwrite: bool = True
+        self, path: Union[str, Path], content: bytes, overwrite: bool = True
     ) -> bool:
         """
         Save file to Azure Blob Storage.
@@ -118,9 +115,7 @@ class AzureBlobStorage(BaseFileStorage):
         raise NotImplementedError("AzureBlobStorage.exists not implemented")
 
     async def list_directory(
-        self,
-        path: Union[str, Path] = "",
-        recursive: bool = False
+        self, path: Union[str, Path] = "", recursive: bool = False
     ) -> List[str]:
         """
         List blobs in directory.

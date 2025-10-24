@@ -29,12 +29,7 @@ class S3FileStorage(BaseFileStorage):
         )
     """
 
-    def __init__(
-        self,
-        bucket_name: str,
-        region: str = "us-east-1",
-        prefix: str = ""
-    ):
+    def __init__(self, bucket_name: str, region: str = "us-east-1", prefix: str = ""):
         """
         Initialize S3 kbrain_storage.
 
@@ -71,10 +66,7 @@ class S3FileStorage(BaseFileStorage):
         return path_str
 
     async def save_file(
-        self,
-        path: Union[str, Path],
-        content: bytes,
-        overwrite: bool = True
+        self, path: Union[str, Path], content: bytes, overwrite: bool = True
     ) -> bool:
         """
         Save file to S3.
@@ -108,9 +100,7 @@ class S3FileStorage(BaseFileStorage):
         raise NotImplementedError("S3FileStorage.exists not implemented")
 
     async def list_directory(
-        self,
-        path: Union[str, Path] = "",
-        recursive: bool = False
+        self, path: Union[str, Path] = "", recursive: bool = False
     ) -> List[str]:
         """
         List files in S3 directory.

@@ -1,4 +1,5 @@
 """Statistics API routes."""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -31,21 +32,30 @@ async def get_global_statistics(
     # Documents by status
     documents_by_status = {}
     for doc_status in ["added", "processing", "processed", "failed"]:
-        count = await db.scalar(
-            select(func.count()).select_from(Document).where(Document.status == doc_status)
-        ) or 0
+        count = (
+            await db.scalar(
+                select(func.count())
+                .select_from(Document)
+                .where(Document.status == doc_status)
+            )
+            or 0
+        )
         documents_by_status[doc_status] = count
 
     # Documents by extension
     documents_by_extension = {}
-    ext_query = select(Document.file_extension, func.count().label("count")).group_by(Document.file_extension)
+    ext_query = select(Document.file_extension, func.count().label("count")).group_by(
+        Document.file_extension
+    )
     ext_result = await db.execute(ext_query)
     for ext, count in ext_result:
         documents_by_extension[ext] = count
 
     # Storage backends
     storage_backends = {}
-    backend_query = select(Document.storage_backend, func.count().label("count")).group_by(Document.storage_backend)
+    backend_query = select(
+        Document.storage_backend, func.count().label("count")
+    ).group_by(Document.storage_backend)
     backend_result = await db.execute(backend_query)
     for backend, count in backend_result:
         storage_backends[backend] = count
@@ -86,24 +96,34 @@ async def get_scope_statistics(
         )
 
     # Total documents
-    total_documents = await db.scalar(
-        select(func.count()).select_from(Document).where(Document.scope_id == scope_id)
-    ) or 0
+    total_documents = (
+        await db.scalar(
+            select(func.count())
+            .select_from(Document)
+            .where(Document.scope_id == scope_id)
+        )
+        or 0
+    )
 
     # Total size
-    total_size = await db.scalar(
-        select(func.sum(Document.file_size)).where(Document.scope_id == scope_id)
-    ) or 0
+    total_size = (
+        await db.scalar(
+            select(func.sum(Document.file_size)).where(Document.scope_id == scope_id)
+        )
+        or 0
+    )
 
     # Documents by status
     documents_by_status = {}
     for doc_status in ["added", "processing", "processed", "failed"]:
-        count = await db.scalar(
-            select(func.count()).select_from(Document).where(
-                Document.scope_id == scope_id,
-                Document.status == doc_status
+        count = (
+            await db.scalar(
+                select(func.count())
+                .select_from(Document)
+                .where(Document.scope_id == scope_id, Document.status == doc_status)
             )
-        ) or 0
+            or 0
+        )
         documents_by_status[doc_status] = count
 
     # Documents by extension

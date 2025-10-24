@@ -1,11 +1,11 @@
 """Scope API routes."""
+
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from kbrain_backend.api.schemas import (
     ScopeCreate,
@@ -61,10 +61,16 @@ async def list_scopes(
     # Get document counts and sizes for each scope
     scope_items = []
     for scope in scopes:
-        doc_count_query = select(func.count()).select_from(Document).where(Document.scope_id == scope.id)
+        doc_count_query = (
+            select(func.count())
+            .select_from(Document)
+            .where(Document.scope_id == scope.id)
+        )
         doc_count = await db.scalar(doc_count_query) or 0
 
-        total_size_query = select(func.sum(Document.file_size)).where(Document.scope_id == scope.id)
+        total_size_query = select(func.sum(Document.file_size)).where(
+            Document.scope_id == scope.id
+        )
         total_size = await db.scalar(total_size_query) or 0
 
         scope_item = ScopeListItem(
@@ -112,17 +118,23 @@ async def get_scope(
         )
 
     # Get statistics
-    doc_count_query = select(func.count()).select_from(Document).where(Document.scope_id == scope.id)
+    doc_count_query = (
+        select(func.count()).select_from(Document).where(Document.scope_id == scope.id)
+    )
     doc_count = await db.scalar(doc_count_query) or 0
 
-    total_size_query = select(func.sum(Document.file_size)).where(Document.scope_id == scope.id)
+    total_size_query = select(func.sum(Document.file_size)).where(
+        Document.scope_id == scope.id
+    )
     total_size = await db.scalar(total_size_query) or 0
 
     # Status breakdown
     status_breakdown = {}
     for doc_status in ["added", "processing", "processed", "failed"]:
-        count_query = select(func.count()).select_from(Document).where(
-            Document.scope_id == scope.id, Document.status == doc_status
+        count_query = (
+            select(func.count())
+            .select_from(Document)
+            .where(Document.scope_id == scope.id, Document.status == doc_status)
         )
         count = await db.scalar(count_query) or 0
         status_breakdown[doc_status] = count
@@ -217,7 +229,9 @@ async def update_scope(
     # Update fields
     if scope_data.name is not None:
         # Check for duplicate name
-        existing_query = select(Scope).where(Scope.name == scope_data.name, Scope.id != scope_id)
+        existing_query = select(Scope).where(
+            Scope.name == scope_data.name, Scope.id != scope_id
+        )
         existing = await db.scalar(existing_query)
         if existing:
             raise HTTPException(

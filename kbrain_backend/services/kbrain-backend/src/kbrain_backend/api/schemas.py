@@ -1,4 +1,5 @@
 """Pydantic schemas for API request/response validation."""
+
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from uuid import UUID
@@ -10,14 +11,17 @@ from pydantic import BaseModel, Field, ConfigDict
 # Common Schemas
 # ============================================================================
 
+
 class PaginationParams(BaseModel):
     """Pagination parameters."""
+
     page: int = Field(1, ge=1, description="Page number")
     per_page: int = Field(20, ge=1, le=200, description="Items per page")
 
 
 class PaginationResponse(BaseModel):
     """Pagination response metadata."""
+
     page: int
     per_page: int
     total_pages: int
@@ -28,12 +32,14 @@ class PaginationResponse(BaseModel):
 
 class ErrorDetail(BaseModel):
     """Error detail for validation errors."""
+
     field: str
     message: str
 
 
 class ErrorResponse(BaseModel):
     """Standard error response."""
+
     error: Dict[str, Any]
 
 
@@ -41,8 +47,10 @@ class ErrorResponse(BaseModel):
 # Scope Schemas
 # ============================================================================
 
+
 class ScopeBase(BaseModel):
     """Base scope schema."""
+
     name: str = Field(..., min_length=3, max_length=255)
     description: Optional[str] = None
     allowed_extensions: List[str] = Field(..., min_items=1)
@@ -52,11 +60,13 @@ class ScopeBase(BaseModel):
 
 class ScopeCreate(ScopeBase):
     """Schema for creating a scope."""
+
     pass
 
 
 class ScopeUpdate(BaseModel):
     """Schema for updating a scope."""
+
     name: Optional[str] = Field(None, min_length=3, max_length=255)
     description: Optional[str] = None
     allowed_extensions: Optional[List[str]] = Field(None, min_items=1)
@@ -65,6 +75,7 @@ class ScopeUpdate(BaseModel):
 
 class ScopeStatistics(BaseModel):
     """Scope statistics."""
+
     document_count: int = 0
     total_size: int = 0
     status_breakdown: Optional[Dict[str, int]] = None
@@ -72,6 +83,7 @@ class ScopeStatistics(BaseModel):
 
 class ScopeResponse(ScopeBase):
     """Schema for scope response."""
+
     id: UUID
     is_active: bool
     created_at: datetime
@@ -83,6 +95,7 @@ class ScopeResponse(ScopeBase):
 
 class ScopeListItem(BaseModel):
     """Schema for scope list item (simplified)."""
+
     id: UUID
     name: str
     description: Optional[str]
@@ -99,6 +112,7 @@ class ScopeListItem(BaseModel):
 
 class ScopeListResponse(BaseModel):
     """Schema for scope list response."""
+
     scopes: List[ScopeListItem]
     pagination: PaginationResponse
 
@@ -107,29 +121,34 @@ class ScopeListResponse(BaseModel):
 # Tag Schemas
 # ============================================================================
 
+
 class TagBase(BaseModel):
     """Base tag schema."""
+
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
     color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
-    metadata: Optional[Dict[str, Any]] = None
+    meta: Optional[Dict[str, Any]] = None
 
 
 class TagCreate(TagBase):
     """Schema for creating a tag."""
+
     pass
 
 
 class TagUpdate(BaseModel):
     """Schema for updating a tag."""
+
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
     color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
-    metadata: Optional[Dict[str, Any]] = None
+    meta: Optional[Dict[str, Any]] = None
 
 
 class TagResponse(TagBase):
     """Schema for tag response."""
+
     id: UUID
     scope_id: UUID
     created_at: datetime
@@ -140,6 +159,7 @@ class TagResponse(TagBase):
 
 class TagListResponse(BaseModel):
     """Schema for tag list response."""
+
     tags: List[TagResponse]
 
 
@@ -147,8 +167,10 @@ class TagListResponse(BaseModel):
 # Document Schemas
 # ============================================================================
 
+
 class DocumentBase(BaseModel):
     """Base document schema."""
+
     filename: str
     original_name: str
     file_size: int
@@ -160,6 +182,7 @@ class DocumentBase(BaseModel):
 
 class DocumentCreate(BaseModel):
     """Schema for creating a document (used internally)."""
+
     scope_id: UUID
     filename: str
     original_name: str
@@ -175,6 +198,7 @@ class DocumentCreate(BaseModel):
 
 class DocumentResponse(DocumentBase):
     """Schema for document response."""
+
     id: UUID
     scope_id: UUID
     status: str
@@ -182,7 +206,7 @@ class DocumentResponse(DocumentBase):
     processing_started: Optional[datetime] = None
     processed_at: Optional[datetime] = None
     error_message: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = Field(None, validation_alias='doc_metadata')
+    metadata: Optional[Dict[str, Any]] = Field(None, validation_alias="doc_metadata")
     tags: Optional[List[TagResponse]] = None
     created_at: datetime
     updated_at: datetime
@@ -192,6 +216,7 @@ class DocumentResponse(DocumentBase):
 
 class DocumentDetailResponse(DocumentResponse):
     """Schema for detailed document response."""
+
     scope_name: Optional[str] = None
     checksum_md5: Optional[str] = None
     checksum_sha256: Optional[str] = None
@@ -200,12 +225,14 @@ class DocumentDetailResponse(DocumentResponse):
 
 class DocumentListResponse(BaseModel):
     """Schema for document list response."""
+
     documents: List[DocumentResponse]
     pagination: PaginationResponse
 
 
 class DocumentUploadResponse(BaseModel):
     """Schema for document upload response."""
+
     id: UUID
     scope_id: UUID
     filename: str
@@ -224,17 +251,20 @@ class DocumentUploadResponse(BaseModel):
 
 class DocumentStatusUpdate(BaseModel):
     """Schema for updating document status."""
+
     status: str = Field(..., pattern="^(added|processing|processed|failed)$")
     metadata: Optional[Dict[str, Any]] = None
 
 
 class DocumentMetadataUpdate(BaseModel):
     """Schema for updating document metadata."""
+
     metadata: Dict[str, Any]
 
 
 class DownloadUrlResponse(BaseModel):
     """Schema for download URL response."""
+
     download_url: str
     expires_at: Optional[datetime] = None
     filename: str
@@ -243,6 +273,7 @@ class DownloadUrlResponse(BaseModel):
 
 class BatchUploadResult(BaseModel):
     """Schema for individual batch upload result."""
+
     filename: str
     status: str  # "success" or "error"
     document: Optional[DocumentUploadResponse] = None
@@ -251,21 +282,27 @@ class BatchUploadResult(BaseModel):
 
 class BatchUploadResponse(BaseModel):
     """Schema for batch upload response."""
+
     results: List[BatchUploadResult]
     summary: Dict[str, int]
 
 
 class DocumentTagsUpdate(BaseModel):
     """Schema for updating document tags."""
-    tag_ids: List[UUID] = Field(..., description="List of tag IDs to assign to document")
+
+    tag_ids: List[UUID] = Field(
+        ..., description="List of tag IDs to assign to document"
+    )
 
 
 # ============================================================================
 # Statistics Schemas
 # ============================================================================
 
+
 class GlobalStatistics(BaseModel):
     """Schema for global statistics."""
+
     total_scopes: int
     total_documents: int
     total_storage_size: int
@@ -277,6 +314,7 @@ class GlobalStatistics(BaseModel):
 
 class ScopeStatisticsDetail(BaseModel):
     """Schema for detailed scope statistics."""
+
     scope_id: UUID
     scope_name: str
     total_documents: int
@@ -291,8 +329,10 @@ class ScopeStatisticsDetail(BaseModel):
 # Health Check Schemas
 # ============================================================================
 
+
 class ServiceStatus(BaseModel):
     """Service status."""
+
     database: str
     storage: str
     queue: str = "healthy"
@@ -300,6 +340,7 @@ class ServiceStatus(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response."""
+
     status: str
     version: str
     timestamp: datetime
@@ -308,6 +349,7 @@ class HealthResponse(BaseModel):
 
 class VersionResponse(BaseModel):
     """Version info response."""
+
     api_version: str
     build: str
     commit: str

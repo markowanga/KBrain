@@ -149,7 +149,7 @@ async def test_path_handling():
         "dir/file.txt",
         "deep/nested/path/file.txt",
         Path("pathlib.txt"),
-        Path("dir") / "pathlib.txt"
+        Path("dir") / "pathlib.txt",
     ]
 
     for path in paths:
@@ -177,10 +177,10 @@ async def test_binary_and_text():
     # Text file
     print("\n--- Text file ---")
     text = "Hello, 世界! 🌍"
-    await storage.save_file("text.txt", text.encode('utf-8'))
+    await storage.save_file("text.txt", text.encode("utf-8"))
     content = await storage.read_file("text.txt")
     print(f"Text content: {content.decode('utf-8')}")
-    assert content.decode('utf-8') == text
+    assert content.decode("utf-8") == text
 
     # Binary file
     print("\n--- Binary file ---")

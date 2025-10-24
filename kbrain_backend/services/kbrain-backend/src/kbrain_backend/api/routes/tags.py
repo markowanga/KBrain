@@ -1,5 +1,5 @@
 """Tag API routes."""
-from typing import List
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -55,13 +55,15 @@ async def create_tag(
 ):
     """Create a new tag in a scope."""
     # Verify scope exists and is active
-    scope_query = select(Scope).where(Scope.id == scope_id, Scope.is_active == True)
+    scope_query = select(Scope).where(Scope.id == scope_id, Scope.is_active)
     scope = await db.scalar(scope_query)
 
     if not scope:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "Scope not found or inactive"}},
+            detail={
+                "error": {"code": "NOT_FOUND", "message": "Scope not found or inactive"}
+            },
         )
 
     # Check if tag with same name exists in this scope
@@ -87,7 +89,7 @@ async def create_tag(
         name=tag_data.name,
         description=tag_data.description,
         color=tag_data.color,
-        metadata=tag_data.metadata,
+        meta=tag_data.meta,
     )
 
     db.add(tag)
@@ -139,11 +141,7 @@ async def update_tag(
     if tag_data.name is not None:
         # Check for duplicate name
         existing_query = select(Tag).where(
-            and_(
-                Tag.scope_id == scope_id,
-                Tag.name == tag_data.name,
-                Tag.id != tag_id
-            )
+            and_(Tag.scope_id == scope_id, Tag.name == tag_data.name, Tag.id != tag_id)
         )
         existing = await db.scalar(existing_query)
         if existing:
@@ -164,8 +162,8 @@ async def update_tag(
     if tag_data.color is not None:
         tag.color = tag_data.color
 
-    if tag_data.metadata is not None:
-        tag.metadata = tag_data.metadata
+    if tag_data.meta is not None:
+        tag.meta = tag_data.meta
 
     await db.commit()
     await db.refresh(tag)
@@ -198,7 +196,12 @@ async def delete_tag(
 
 # Document-Tag relationship endpoints
 
-@router.post("/{tag_id}/documents/{document_id}", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/{tag_id}/documents/{document_id}",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 async def add_tag_to_document(
     scope_id: UUID,
     tag_id: UUID,
@@ -217,8 +220,10 @@ async def add_tag_to_document(
         )
 
     # Verify document exists and belongs to the scope
-    doc_query = select(Document).options(selectinload(Document.tags)).where(
-        and_(Document.id == document_id, Document.scope_id == scope_id)
+    doc_query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(and_(Document.id == document_id, Document.scope_id == scope_id))
     )
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
@@ -226,14 +231,24 @@ async def add_tag_to_document(
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "Document not found in this scope"}},
+            detail={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Document not found in this scope",
+                }
+            },
         )
 
     # Check if tag is already assigned
     if tag in document.tags:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={"error": {"code": "DUPLICATE_RESOURCE", "message": "Tag already assigned to document"}},
+            detail={
+                "error": {
+                    "code": "DUPLICATE_RESOURCE",
+                    "message": "Tag already assigned to document",
+                }
+            },
         )
 
     # Add tag to document
@@ -244,7 +259,9 @@ async def add_tag_to_document(
     return DocumentResponse.model_validate(document)
 
 
-@router.delete("/{tag_id}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{tag_id}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT
+)
 async def remove_tag_from_document(
     scope_id: UUID,
     tag_id: UUID,
@@ -263,8 +280,10 @@ async def remove_tag_from_document(
         )
 
     # Verify document exists and belongs to the scope
-    doc_query = select(Document).options(selectinload(Document.tags)).where(
-        and_(Document.id == document_id, Document.scope_id == scope_id)
+    doc_query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(and_(Document.id == document_id, Document.scope_id == scope_id))
     )
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
@@ -272,14 +291,24 @@ async def remove_tag_from_document(
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "Document not found in this scope"}},
+            detail={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Document not found in this scope",
+                }
+            },
         )
 
     # Check if tag is assigned
     if tag not in document.tags:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "NOT_FOUND", "message": "Tag not assigned to document"}},
+            detail={
+                "error": {
+                    "code": "NOT_FOUND",
+                    "message": "Tag not assigned to document",
+                }
+            },
         )
 
     # Remove tag from document
@@ -301,7 +330,11 @@ async def update_document_tags(
 ):
     """Update all tags assigned to a document."""
     # Get document with current tags
-    doc_query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
+    doc_query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(Document.id == document_id)
+    )
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
 
@@ -348,7 +381,11 @@ async def get_document_tags(
     db: AsyncSession = Depends(get_db),
 ):
     """Get all tags assigned to a document."""
-    doc_query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
+    doc_query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(Document.id == document_id)
+    )
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
 
@@ -358,4 +395,6 @@ async def get_document_tags(
             detail={"error": {"code": "NOT_FOUND", "message": "Document not found"}},
         )
 
-    return TagListResponse(tags=[TagResponse.model_validate(tag) for tag in document.tags])
+    return TagListResponse(
+        tags=[TagResponse.model_validate(tag) for tag in document.tags]
+    )

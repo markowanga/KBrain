@@ -14,9 +14,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from kbrain_backend.database.connection import Base
 from kbrain_backend.config.settings import settings
 # Import all models to ensure they're registered with Base
-from kbrain_backend.core.models.document import Document
-from kbrain_backend.core.models.scope import Scope
-from kbrain_backend.core.models.processing_queue import ProcessingQueue
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -79,9 +76,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

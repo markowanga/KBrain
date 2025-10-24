@@ -62,10 +62,7 @@ class LocalFileStorage(BaseFileStorage):
         return full_path
 
     async def save_file(
-        self,
-        path: Union[str, Path],
-        content: bytes,
-        overwrite: bool = True
+        self, path: Union[str, Path], content: bytes, overwrite: bool = True
     ) -> bool:
         """
         Save file to local filesystem.
@@ -93,7 +90,7 @@ class LocalFileStorage(BaseFileStorage):
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
             # Write file asynchronously
-            async with aiofiles.open(full_path, 'wb') as f:
+            async with aiofiles.open(full_path, "wb") as f:
                 await f.write(content)
 
             return True
@@ -117,7 +114,7 @@ class LocalFileStorage(BaseFileStorage):
             if not full_path.exists() or not full_path.is_file():
                 return None
 
-            async with aiofiles.open(full_path, 'rb') as f:
+            async with aiofiles.open(full_path, "rb") as f:
                 return await f.read()
         except Exception as e:
             print(f"Error reading file {path}: {e}")
@@ -140,9 +137,7 @@ class LocalFileStorage(BaseFileStorage):
             return False
 
     async def list_directory(
-        self,
-        path: Union[str, Path] = "",
-        recursive: bool = False
+        self, path: Union[str, Path] = "", recursive: bool = False
     ) -> List[str]:
         """
         List files in directory.
@@ -167,7 +162,7 @@ class LocalFileStorage(BaseFileStorage):
 
             if recursive:
                 # Recursive listing
-                for item in full_path.rglob('*'):
+                for item in full_path.rglob("*"):
                     if item.is_file():
                         # Get path relative to root
                         rel_path = item.relative_to(self.root_path)
@@ -248,9 +243,7 @@ class LocalFileStorage(BaseFileStorage):
             return False
 
     async def delete_directory(
-        self,
-        path: Union[str, Path],
-        recursive: bool = False
+        self, path: Union[str, Path], recursive: bool = False
     ) -> bool:
         """
         Delete directory from local filesystem.
@@ -271,6 +264,7 @@ class LocalFileStorage(BaseFileStorage):
             if recursive:
                 # Delete directory and all contents
                 import shutil
+
                 shutil.rmtree(full_path)
             else:
                 # Delete only if empty
@@ -282,9 +276,7 @@ class LocalFileStorage(BaseFileStorage):
             return False
 
     async def copy_file(
-        self,
-        source: Union[str, Path],
-        destination: Union[str, Path]
+        self, source: Union[str, Path], destination: Union[str, Path]
     ) -> bool:
         """
         Copy file within kbrain_storage.
@@ -307,9 +299,7 @@ class LocalFileStorage(BaseFileStorage):
             return False
 
     async def move_file(
-        self,
-        source: Union[str, Path],
-        destination: Union[str, Path]
+        self, source: Union[str, Path], destination: Union[str, Path]
     ) -> bool:
         """
         Move file within kbrain_storage.

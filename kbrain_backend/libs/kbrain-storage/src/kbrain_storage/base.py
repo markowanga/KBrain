@@ -16,10 +16,7 @@ class BaseFileStorage(ABC):
 
     @abstractmethod
     async def save_file(
-        self,
-        path: Union[str, Path],
-        content: bytes,
-        overwrite: bool = True
+        self, path: Union[str, Path], content: bytes, overwrite: bool = True
     ) -> bool:
         """
         Save file to kbrain_storage.
@@ -62,9 +59,7 @@ class BaseFileStorage(ABC):
 
     @abstractmethod
     async def list_directory(
-        self,
-        path: Union[str, Path] = "",
-        recursive: bool = False
+        self, path: Union[str, Path] = "", recursive: bool = False
     ) -> List[str]:
         """
         List files in directory.

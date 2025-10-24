@@ -19,6 +19,18 @@ dependencies = [
     "greenlet>=3.2.4",
 ]
 
+[dependency-groups]
+dev = [
+    "ruff>=0.8.0",
+    "poethepoet>=0.31.0",
+]
+
+[tool.poe.tasks]
+lint = "ruff check ."
+lint-fix = "ruff check --fix ."
+format = "ruff format ."
+format-check = "ruff format --check ."
+
 [tool.uv.workspace]
 members = [
     "libs/kbrain-storage",

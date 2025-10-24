@@ -1,4 +1,5 @@
 """KBrain Backend API - Main application entry point."""
+
 import os
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -124,16 +125,13 @@ async def legacy_health():
         "status": "healthy",
         "service": "kbrain-backend",
         "storage_backend": STORAGE_BACKEND,
-        "storage_root": STORAGE_ROOT
+        "storage_root": STORAGE_ROOT,
     }
 
 
 # Legacy file storage endpoints (for backward compatibility)
 @app.post("/api/files/upload")
-async def legacy_upload_file(
-        file: UploadFile = File(...),
-        path: Optional[str] = None
-):
+async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] = None):
     """
     Legacy file upload endpoint (for backward compatibility).
     Use /v1/scopes/{scope_id}/documents for new implementations.
@@ -151,11 +149,7 @@ async def legacy_upload_file(
         if not success:
             raise HTTPException(status_code=500, detail="Failed to save file")
 
-        return {
-            "success": True,
-            "path": file_path,
-            "size": len(content)
-        }
+        return {"success": True, "path": file_path, "size": len(content)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -173,13 +167,14 @@ async def legacy_download_file(path: str):
 
     # Determine content type based on extension
     import mimetypes
+
     content_type, _ = mimetypes.guess_type(path)
     content_type = content_type or "application/octet-stream"
 
     return Response(
         content=content,
         media_type=content_type,
-        headers={"Content-Disposition": f"attachment; filename={path.split('/')[-1]}"}
+        headers={"Content-Disposition": f"attachment; filename={path.split('/')[-1]}"},
     )
 
 
@@ -198,21 +193,22 @@ async def read_file(path: str):
 
     # Try to decode as text
     try:
-        text_content = content.decode('utf-8')
+        text_content = content.decode("utf-8")
         return {
             "path": path,
             "content": text_content,
             "size": len(content),
-            "type": "text"
+            "type": "text",
         }
     except UnicodeDecodeError:
         # Return base64 for binary files
         import base64
+
         return {
             "path": path,
-            "content": base64.b64encode(content).decode('ascii'),
+            "content": base64.b64encode(content).decode("ascii"),
             "size": len(content),
-            "type": "binary"
+            "type": "binary",
         }
 
 
@@ -229,20 +225,13 @@ async def check_file_exists(path: str):
 
 
 @app.get("/api/files/list")
-async def legacy_list_files(
-        path: str = "",
-        recursive: bool = False
-):
+async def legacy_list_files(path: str = "", recursive: bool = False):
     """
     Legacy file list endpoint (for backward compatibility).
     Use /v1/scopes/{scope_id}/documents for new implementations.
     """
     files = await storage.list_directory(path, recursive)
-    return {
-        "path": path,
-        "files": files,
-        "count": len(files)
-    }
+    return {"path": path, "files": files, "count": len(files)}
 
 
 @app.delete("/api/files/delete/{path:path}")
@@ -274,11 +263,7 @@ async def get_file_info(path: str):
 
     size = await storage.get_file_size(path)
 
-    return {
-        "path": path,
-        "exists": exists,
-        "size": size
-    }
+    return {"path": path, "exists": exists, "size": size}
 
 
 @app.post("/api/files/directory")

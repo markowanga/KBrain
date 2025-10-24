@@ -1,8 +1,10 @@
 """Error handling utilities."""
-from typing import Any, Dict, Optional
+
+from typing import Optional
+
 from fastapi import Request, status
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -37,7 +39,9 @@ class NotFoundError(APIError):
 class ValidationError(APIError):
     """Validation error."""
 
-    def __init__(self, message: str = "Validation failed", details: Optional[list] = None):
+    def __init__(
+        self, message: str = "Validation failed", details: Optional[list] = None
+    ):
         super().__init__(
             code="VALIDATION_ERROR",
             message=message,
@@ -86,15 +90,19 @@ async def api_error_handler(request: Request, exc: APIError) -> JSONResponse:
     )
 
 
-async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     """Handle validation errors."""
     details = []
     for error in exc.errors():
         field = ".".join(str(x) for x in error["loc"][1:])  # Skip 'body'
-        details.append({
-            "field": field,
-            "message": error["msg"],
-        })
+        details.append(
+            {
+                "field": field,
+                "message": error["msg"],
+            }
+        )
 
     error_response = {
         "error": {
@@ -128,7 +136,9 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     )
 
 
-async def database_error_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+async def database_error_handler(
+    request: Request, exc: SQLAlchemyError
+) -> JSONResponse:
     """Handle database errors."""
     print(f"Database error: {exc}")
 

@@ -1,4 +1,5 @@
 """Health check and version API routes."""
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
@@ -31,11 +32,17 @@ async def health_check(
     # Check queue (simplified)
     queue_status = "healthy"
 
-    overall_status = "healthy" if all([
-        db_status == "healthy",
-        storage_status == "healthy",
-        queue_status == "healthy"
-    ]) else "unhealthy"
+    overall_status = (
+        "healthy"
+        if all(
+            [
+                db_status == "healthy",
+                storage_status == "healthy",
+                queue_status == "healthy",
+            ]
+        )
+        else "unhealthy"
+    )
 
     services = ServiceStatus(
         database=db_status,
