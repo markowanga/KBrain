@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.schemas import (
+from kbrain_backend.api.schemas import (
     DocumentResponse,
     DocumentListResponse,
     DocumentUploadResponse,
@@ -21,10 +21,10 @@ from src.api.schemas import (
     DownloadUrlResponse,
     PaginationResponse,
 )
-from src.core.models.scope import Scope
-from src.core.models.document import Document
-from src.database.connection import get_db
-from src.config.settings import settings
+from kbrain_backend.core.models.scope import Scope
+from kbrain_backend.core.models.document import Document
+from kbrain_backend.database.connection import get_db
+from kbrain_backend.config.settings import settings
 
 # We'll use the storage from main.py, for now we'll import it
 # In a real implementation, this should be dependency-injected

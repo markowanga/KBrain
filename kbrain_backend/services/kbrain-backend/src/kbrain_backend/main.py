@@ -7,20 +7,19 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
-import uvicorn
 
-from src.config.settings import settings
-from src.database.connection import init_db, close_db
-from src.api.routes import scopes, documents, statistics, health
-from src.api.routes.documents import set_storage
-from src.utils.errors import (
+from kbrain_backend.config.settings import settings
+from kbrain_backend.database.connection import init_db, close_db
+from kbrain_backend.api.routes import scopes, documents, statistics, health
+from kbrain_backend.api.routes.documents import set_storage
+from kbrain_backend.utils.errors import (
     APIError,
     api_error_handler,
     validation_error_handler,
     general_exception_handler,
     database_error_handler,
 )
-from src.utils.logger import logger
+from kbrain_backend.utils.logger import logger
 
 # Storage backend initialization
 from kbrain_storage import BaseFileStorage, LocalFileStorage
@@ -46,7 +45,7 @@ else:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     """Application lifespan manager."""
     # Startup
     logger.info("Starting KBrain API...")
@@ -130,8 +129,8 @@ async def legacy_health():
 # Legacy file storage endpoints (for backward compatibility)
 @app.post("/api/files/upload")
 async def legacy_upload_file(
-    file: UploadFile = File(...),
-    path: Optional[str] = None
+        file: UploadFile = File(...),
+        path: Optional[str] = None
 ):
     """
     Legacy file upload endpoint (for backward compatibility).
@@ -229,8 +228,8 @@ async def check_file_exists(path: str):
 
 @app.get("/api/files/list")
 async def legacy_list_files(
-    path: str = "",
-    recursive: bool = False
+        path: str = "",
+        recursive: bool = False
 ):
     """
     Legacy file list endpoint (for backward compatibility).
@@ -296,10 +295,10 @@ async def create_directory(path: str):
     return {"path": path, "created": True}
 
 
-if __name__ == "__main__":
-    uvicorn.run(
-        app,
-        host=settings.host,
-        port=settings.port,
-        log_level=settings.log_level.lower(),
-    )
+# if __name__ == "__main__":
+#     uvicorn.run(
+#         app,
+#         host=settings.host,
+#         port=settings.port,
+#         log_level=settings.log_level.lower(),
+#     )

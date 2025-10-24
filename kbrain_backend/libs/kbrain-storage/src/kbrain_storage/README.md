@@ -415,7 +415,7 @@ All paths are resolved and checked to ensure they stay within the storage root.
 Run the test suite:
 
 ```bash
-cd kbrain_backend
+cd kbrain-backend
 python test_storage.py
 ```
 

@@ -4,13 +4,14 @@ WORKDIR /app
 
 # Copy the project files
 COPY pyproject.toml .
-COPY main.py .
+COPY services services
+COPY libs libs
 
 # Install dependencies
-RUN uv pip install --system -r pyproject.toml
+RUN uv sync --all-packages
 
 # Expose the port
 EXPOSE 8000
-
+RUN chmod +x /app/services/kbrain-backend/start_service.sh
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+ENTRYPOINT ["./services/kbrain-backend/start_service.sh"]

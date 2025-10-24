@@ -7,7 +7,7 @@ from sqlalchemy import String, Text, BigInteger, Integer, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from src.database.connection import Base
+from kbrain_backend.database.connection import Base
 
 
 class Document(Base):

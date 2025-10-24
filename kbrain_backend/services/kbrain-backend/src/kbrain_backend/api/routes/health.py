@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.schemas import HealthResponse, VersionResponse, ServiceStatus
-from src.config.settings import settings
-from src.database.connection import get_db
+from kbrain_backend.api.schemas import HealthResponse, VersionResponse, ServiceStatus
+from kbrain_backend.config.settings import settings
+from kbrain_backend.database.connection import get_db
 
 router = APIRouter(tags=["health"])
 

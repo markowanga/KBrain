@@ -7,7 +7,7 @@ from sqlalchemy import select, func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from src.api.schemas import (
+from kbrain_backend.api.schemas import (
     ScopeCreate,
     ScopeUpdate,
     ScopeResponse,
@@ -16,9 +16,9 @@ from src.api.schemas import (
     PaginationResponse,
     ScopeStatistics,
 )
-from src.core.models.scope import Scope
-from src.core.models.document import Document
-from src.database.connection import get_db
+from kbrain_backend.core.models.scope import Scope
+from kbrain_backend.core.models.document import Document
+from kbrain_backend.database.connection import get_db
 
 router = APIRouter(prefix="/scopes", tags=["scopes"])
 

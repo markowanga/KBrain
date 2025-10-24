@@ -5,10 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.schemas import GlobalStatistics, ScopeStatisticsDetail
-from src.core.models.scope import Scope
-from src.core.models.document import Document
-from src.database.connection import get_db
+from kbrain_backend.api.schemas import GlobalStatistics, ScopeStatisticsDetail
+from kbrain_backend.core.models.scope import Scope
+from kbrain_backend.core.models.document import Document
+from kbrain_backend.database.connection import get_db
 
 router = APIRouter(prefix="/statistics", tags=["statistics"])
 

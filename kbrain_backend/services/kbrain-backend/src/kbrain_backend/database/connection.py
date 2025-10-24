@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base
 
-from src.config.settings import settings
+from kbrain_backend.config.settings import settings
 
 # Create async engine
 engine = create_async_engine(

@@ -36,7 +36,7 @@ docker-compose up
 
 **Backend:**
 ```bash
-cd kbrain_backend
+cd kbrain-backend
 uv sync
 uv run uvicorn main:app --reload
 ```

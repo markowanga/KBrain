@@ -6,7 +6,7 @@ from sqlalchemy import String, Text, Integer, ForeignKey, BigInteger
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
-from src.database.connection import Base
+from kbrain_backend.database.connection import Base
 
 
 class ProcessingQueue(Base):
