@@ -142,11 +142,11 @@ class DocumentResponse(DocumentBase):
     processing_started: Optional[datetime] = None
     processed_at: Optional[datetime] = None
     error_message: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = Field(None, validation_alias='doc_metadata')
     created_at: datetime
     updated_at: datetime
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class DocumentDetailResponse(DocumentResponse):

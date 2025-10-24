@@ -23,7 +23,7 @@ from src.utils.errors import (
 from src.utils.logger import logger
 
 # Storage backend initialization
-from kbrain_backend.libs.storage.src.kbrain_storage.storage import BaseFileStorage, LocalFileStorage
+from kbrain_storage import BaseFileStorage, LocalFileStorage
 
 # Storage configuration
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", settings.storage_backend)
