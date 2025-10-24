@@ -1,26 +1,33 @@
 import os
-from typing import Any, Dict, List, Optional
-from fastapi import FastAPI, HTTPException
+from typing import Optional
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 from pydantic import BaseModel
 import uvicorn
 
-from storage import BaseStorage, MemoryStorage, FileStorage
+from storage import BaseFileStorage, LocalFileStorage
 
-# Storage type configuration (can be set via environment variable)
-STORAGE_TYPE = os.getenv("STORAGE_TYPE", "file")  # "memory" or "file"
-STORAGE_DIR = os.getenv("STORAGE_DIR", "data")
+# Storage configuration (can be set via environment variable)
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "local")  # "local", "s3", or "azure"
+STORAGE_ROOT = os.getenv("STORAGE_ROOT", "storage_data")
 
 app = FastAPI(title="KBrain API")
 
 # Initialize storage backend
-storage: BaseStorage
-if STORAGE_TYPE == "memory":
-    storage = MemoryStorage()
-    print("Using in-memory storage (volatile)")
+storage: BaseFileStorage
+
+if STORAGE_BACKEND == "local":
+    storage = LocalFileStorage(root_path=STORAGE_ROOT)
+    print(f"Using local file storage in '{STORAGE_ROOT}' directory")
+elif STORAGE_BACKEND == "s3":
+    # TODO: Implement S3 initialization
+    raise NotImplementedError("S3 storage not yet implemented")
+elif STORAGE_BACKEND == "azure":
+    # TODO: Implement Azure initialization
+    raise NotImplementedError("Azure Blob storage not yet implemented")
 else:
-    storage = FileStorage(storage_dir=STORAGE_DIR)
-    print(f"Using file-based storage in '{STORAGE_DIR}' directory (persistent)")
+    raise ValueError(f"Unknown storage backend: {STORAGE_BACKEND}")
 
 # CORS configuration for frontend
 app.add_middleware(
@@ -33,17 +40,10 @@ app.add_middleware(
 
 
 # Pydantic models for API requests
-class SetItemRequest(BaseModel):
-    key: str
-    value: Any
-
-
-class SetManyRequest(BaseModel):
-    items: Dict[str, Any]
-
-
-class DeleteManyRequest(BaseModel):
-    keys: List[str]
+class SaveFileRequest(BaseModel):
+    path: str
+    content: str  # Base64 encoded or plain text
+    overwrite: bool = True
 
 
 # Basic endpoints
@@ -54,96 +54,192 @@ async def root():
 
 @app.get("/api/health")
 async def health():
+    """Health check endpoint."""
     return {
         "status": "healthy",
         "service": "kbrain-backend",
-        "storage_type": STORAGE_TYPE,
-        "storage_count": await storage.count()
+        "storage_backend": STORAGE_BACKEND,
+        "storage_root": STORAGE_ROOT
     }
 
 
-# Storage API endpoints
-@app.get("/api/storage/stats")
-async def get_storage_stats():
-    """Get storage statistics."""
+# File Storage API endpoints
+@app.post("/api/files/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    path: Optional[str] = None
+):
+    """
+    Upload a file to storage.
+
+    Args:
+        file: The file to upload
+        path: Optional custom path (defaults to original filename)
+    """
+    try:
+        # Use provided path or original filename
+        file_path = path if path else file.filename
+
+        # Read file content
+        content = await file.read()
+
+        # Save to storage
+        success = await storage.save_file(file_path, content)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save file")
+
+        return {
+            "success": True,
+            "path": file_path,
+            "size": len(content)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/files/download/{path:path}")
+async def download_file(path: str):
+    """
+    Download a file from storage.
+
+    Args:
+        path: File path in storage
+    """
+    content = await storage.read_file(path)
+
+    if content is None:
+        raise HTTPException(status_code=404, detail=f"File '{path}' not found")
+
+    # Determine content type based on extension
+    import mimetypes
+    content_type, _ = mimetypes.guess_type(path)
+    content_type = content_type or "application/octet-stream"
+
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Content-Disposition": f"attachment; filename={path.split('/')[-1]}"}
+    )
+
+
+@app.get("/api/files/read/{path:path}")
+async def read_file(path: str):
+    """
+    Read a file from storage and return as JSON.
+
+    Args:
+        path: File path in storage
+    """
+    content = await storage.read_file(path)
+
+    if content is None:
+        raise HTTPException(status_code=404, detail=f"File '{path}' not found")
+
+    # Try to decode as text
+    try:
+        text_content = content.decode('utf-8')
+        return {
+            "path": path,
+            "content": text_content,
+            "size": len(content),
+            "type": "text"
+        }
+    except UnicodeDecodeError:
+        # Return base64 for binary files
+        import base64
+        return {
+            "path": path,
+            "content": base64.b64encode(content).decode('ascii'),
+            "size": len(content),
+            "type": "binary"
+        }
+
+
+@app.get("/api/files/exists/{path:path}")
+async def check_file_exists(path: str):
+    """
+    Check if a file exists.
+
+    Args:
+        path: File path in storage
+    """
+    exists = await storage.exists(path)
+    return {"path": path, "exists": exists}
+
+
+@app.get("/api/files/list")
+async def list_files(
+    path: str = "",
+    recursive: bool = False
+):
+    """
+    List files in directory.
+
+    Args:
+        path: Directory path (empty for root)
+        recursive: Whether to list recursively
+    """
+    files = await storage.list_directory(path, recursive)
     return {
-        "storage_type": STORAGE_TYPE,
-        "total_items": await storage.count(),
-        "keys": await storage.list_keys()
+        "path": path,
+        "files": files,
+        "count": len(files)
     }
 
 
-@app.get("/api/storage/item/{key}")
-async def get_item(key: str):
-    """Get a single item by key."""
-    value = await storage.get(key)
-    if value is None:
-        raise HTTPException(status_code=404, detail=f"Key '{key}' not found")
-    return {"key": key, "value": value}
+@app.delete("/api/files/delete/{path:path}")
+async def delete_file(path: str):
+    """
+    Delete a file from storage.
 
+    Args:
+        path: File path in storage
+    """
+    success = await storage.delete_file(path)
 
-@app.post("/api/storage/item")
-async def set_item(request: SetItemRequest):
-    """Set a single item."""
-    success = await storage.set(request.key, request.value)
     if not success:
-        raise HTTPException(status_code=500, detail="Failed to store item")
-    return {"key": request.key, "success": True}
+        raise HTTPException(status_code=404, detail=f"File '{path}' not found")
+
+    return {"path": path, "deleted": True}
 
 
-@app.delete("/api/storage/item/{key}")
-async def delete_item(key: str):
-    """Delete a single item by key."""
-    success = await storage.delete(key)
+@app.get("/api/files/info/{path:path}")
+async def get_file_info(path: str):
+    """
+    Get file information.
+
+    Args:
+        path: File path in storage
+    """
+    exists = await storage.exists(path)
+
+    if not exists:
+        raise HTTPException(status_code=404, detail=f"File '{path}' not found")
+
+    size = await storage.get_file_size(path)
+
+    return {
+        "path": path,
+        "exists": exists,
+        "size": size
+    }
+
+
+@app.post("/api/files/directory")
+async def create_directory(path: str):
+    """
+    Create a directory.
+
+    Args:
+        path: Directory path
+    """
+    success = await storage.create_directory(path)
+
     if not success:
-        raise HTTPException(status_code=404, detail=f"Key '{key}' not found")
-    return {"key": key, "deleted": True}
+        raise HTTPException(status_code=500, detail="Failed to create directory")
 
-
-@app.get("/api/storage/exists/{key}")
-async def check_exists(key: str):
-    """Check if a key exists."""
-    exists = await storage.exists(key)
-    return {"key": key, "exists": exists}
-
-
-@app.get("/api/storage/keys")
-async def list_keys(prefix: Optional[str] = None):
-    """List all keys, optionally filtered by prefix."""
-    keys = await storage.list_keys(prefix)
-    return {"keys": keys, "count": len(keys)}
-
-
-@app.get("/api/storage/all")
-async def get_all_items():
-    """Get all stored items."""
-    items = await storage.get_all()
-    return {"items": items, "count": len(items)}
-
-
-@app.post("/api/storage/many")
-async def set_many_items(request: SetManyRequest):
-    """Set multiple items at once."""
-    success = await storage.set_many(request.items)
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to store items")
-    return {"count": len(request.items), "success": True}
-
-
-@app.delete("/api/storage/many")
-async def delete_many_items(request: DeleteManyRequest):
-    """Delete multiple items at once."""
-    deleted_count = await storage.delete_many(request.keys)
-    return {"requested": len(request.keys), "deleted": deleted_count}
-
-
-@app.delete("/api/storage/clear")
-async def clear_storage():
-    """Clear all storage."""
-    success = await storage.clear()
-    if not success:
-        raise HTTPException(status_code=500, detail="Failed to clear storage")
-    return {"cleared": True}
+    return {"path": path, "created": True}
 
 
 if __name__ == "__main__":

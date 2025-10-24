@@ -1,39 +1,33 @@
 """
-Abstract base class for storage implementations.
-All methods are asynchronous for consistent API.
+Abstract base class for file storage implementations.
+Supports Local filesystem, AWS S3, and Azure Blob Storage.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import List, Optional, Union
 
 
-class BaseStorage(ABC):
+class BaseFileStorage(ABC):
     """
-    Abstract base class for storage backends.
+    Abstract base class for file storage backends.
     Provides a consistent async interface for different storage implementations.
     """
 
     @abstractmethod
-    async def get(self, key: str) -> Optional[Any]:
+    async def save_file(
+        self,
+        path: Union[str, Path],
+        content: bytes,
+        overwrite: bool = True
+    ) -> bool:
         """
-        Retrieve a value by key.
+        Save file to storage.
 
         Args:
-            key: The key to retrieve
-
-        Returns:
-            The stored value or None if not found
-        """
-        pass
-
-    @abstractmethod
-    async def set(self, key: str, value: Any) -> bool:
-        """
-        Store a value with a key.
-
-        Args:
-            key: The key to store under
-            value: The value to store
+            path: File path (relative to storage root)
+            content: File content as bytes
+            overwrite: Whether to overwrite existing file
 
         Returns:
             True if successful, False otherwise
@@ -41,25 +35,25 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    async def delete(self, key: str) -> bool:
+    async def read_file(self, path: Union[str, Path]) -> Optional[bytes]:
         """
-        Delete a value by key.
+        Read file from storage.
 
         Args:
-            key: The key to delete
+            path: File path (relative to storage root)
 
         Returns:
-            True if deleted, False if not found
+            File content as bytes, or None if not found
         """
         pass
 
     @abstractmethod
-    async def exists(self, key: str) -> bool:
+    async def exists(self, path: Union[str, Path]) -> bool:
         """
-        Check if a key exists.
+        Check if file or directory exists.
 
         Args:
-            key: The key to check
+            path: File or directory path
 
         Returns:
             True if exists, False otherwise
@@ -67,70 +61,58 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    async def list_keys(self, prefix: Optional[str] = None) -> List[str]:
+    async def list_directory(
+        self,
+        path: Union[str, Path] = "",
+        recursive: bool = False
+    ) -> List[str]:
         """
-        List all keys, optionally filtered by prefix.
+        List files in directory.
 
         Args:
-            prefix: Optional prefix to filter keys
+            path: Directory path (empty string for root)
+            recursive: Whether to list recursively
 
         Returns:
-            List of matching keys
+            List of file paths (relative to storage root)
         """
         pass
 
     @abstractmethod
-    async def clear(self) -> bool:
+    async def delete_file(self, path: Union[str, Path]) -> bool:
         """
-        Clear all stored data.
+        Delete file from storage.
+
+        Args:
+            path: File path
+
+        Returns:
+            True if deleted, False if not found
+        """
+        pass
+
+    @abstractmethod
+    async def get_file_size(self, path: Union[str, Path]) -> Optional[int]:
+        """
+        Get file size in bytes.
+
+        Args:
+            path: File path
+
+        Returns:
+            File size in bytes, or None if not found
+        """
+        pass
+
+    @abstractmethod
+    async def create_directory(self, path: Union[str, Path]) -> bool:
+        """
+        Create directory (if backend supports it).
+
+        Args:
+            path: Directory path
 
         Returns:
             True if successful
-        """
-        pass
-
-    @abstractmethod
-    async def get_all(self) -> Dict[str, Any]:
-        """
-        Get all key-value pairs.
-
-        Returns:
-            Dictionary of all stored data
-        """
-        pass
-
-    @abstractmethod
-    async def set_many(self, items: Dict[str, Any]) -> bool:
-        """
-        Store multiple key-value pairs at once.
-
-        Args:
-            items: Dictionary of key-value pairs to store
-
-        Returns:
-            True if successful
-        """
-        pass
-
-    @abstractmethod
-    async def delete_many(self, keys: List[str]) -> int:
-        """
-        Delete multiple keys at once.
-
-        Args:
-            keys: List of keys to delete
-
-        Returns:
-            Number of keys actually deleted
-        """
-        pass
-
-    @abstractmethod
-    async def count(self) -> int:
-        """
-        Count total number of stored items.
-
-        Returns:
-            Number of items in storage
         """
         pass

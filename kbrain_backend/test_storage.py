@@ -1,148 +1,214 @@
 """
-Simple test script for storage implementations.
+Test script for file storage implementations.
 Run with: python test_storage.py
 """
 
 import asyncio
-from storage import MemoryStorage, FileStorage
+from pathlib import Path
+from storage import LocalFileStorage
 
 
-async def test_memory_storage():
-    """Test in-memory storage."""
-    print("\n=== Testing MemoryStorage ===")
-    storage = MemoryStorage()
+async def test_local_storage():
+    """Test local file storage."""
+    print("\n=== Testing LocalFileStorage ===")
 
-    # Test basic operations
-    print("Setting key 'test' to 'hello'")
-    await storage.set("test", "hello")
+    # Initialize storage
+    storage = LocalFileStorage(root_path="test_storage_data")
+    print(f"Initialized storage at: {storage.root_path}")
 
-    print("Getting key 'test':", await storage.get("test"))
-    print("Key exists:", await storage.exists("test"))
-    print("Count:", await storage.count())
+    # Test 1: Save and read file
+    print("\n--- Test 1: Save and read file ---")
+    test_content = b"Hello, KBrain!"
+    success = await storage.save_file("test.txt", test_content)
+    print(f"Save file: {success}")
 
-    # Test batch operations
-    print("\nSetting multiple items...")
-    await storage.set_many({
-        "user:1": {"name": "Alice", "age": 30},
-        "user:2": {"name": "Bob", "age": 25},
-        "config:theme": "dark"
-    })
+    content = await storage.read_file("test.txt")
+    print(f"Read content: {content.decode('utf-8')}")
+    assert content == test_content, "Content mismatch!"
 
-    print("Total count:", await storage.count())
-    print("Keys with 'user:' prefix:", await storage.list_keys("user:"))
-    print("All keys:", await storage.list_keys())
+    # Test 2: Check if file exists
+    print("\n--- Test 2: Check file existence ---")
+    exists = await storage.exists("test.txt")
+    print(f"File exists: {exists}")
+    assert exists, "File should exist!"
 
-    # Test get_all
-    print("\nAll items:")
-    all_items = await storage.get_all()
-    for key, value in all_items.items():
-        print(f"  {key}: {value}")
+    not_exists = await storage.exists("nonexistent.txt")
+    print(f"Nonexistent file: {not_exists}")
+    assert not not_exists, "File should not exist!"
 
-    # Test delete
-    print("\nDeleting 'test' key")
-    deleted = await storage.delete("test")
-    print(f"Deleted: {deleted}")
-    print("Count after delete:", await storage.count())
+    # Test 3: Save file in subdirectory
+    print("\n--- Test 3: Save file in subdirectory ---")
+    success = await storage.save_file("docs/readme.md", b"# KBrain\n\nDocumentation")
+    print(f"Save in subdirectory: {success}")
 
-    # Test delete_many
-    print("\nDeleting multiple keys")
-    deleted_count = await storage.delete_many(["user:1", "user:2"])
-    print(f"Deleted {deleted_count} keys")
-    print("Final count:", await storage.count())
+    content = await storage.read_file("docs/readme.md")
+    print(f"Read from subdirectory: {content.decode('utf-8')[:20]}...")
 
-    # Clear all
-    print("\nClearing all data")
-    await storage.clear()
-    print("Count after clear:", await storage.count())
+    # Test 4: List directory
+    print("\n--- Test 4: List directory ---")
+    files = await storage.list_directory()
+    print(f"Files in root: {files}")
 
-    print("\n✓ MemoryStorage tests completed!")
+    files_in_docs = await storage.list_directory("docs")
+    print(f"Files in docs/: {files_in_docs}")
+
+    # Test 5: List directory recursively
+    print("\n--- Test 5: List directory recursively ---")
+    await storage.save_file("docs/api/endpoints.md", b"# API Endpoints")
+    await storage.save_file("docs/guides/getting-started.md", b"# Getting Started")
+
+    all_files = await storage.list_directory(recursive=True)
+    print(f"All files (recursive): {all_files}")
+
+    # Test 6: Get file size
+    print("\n--- Test 6: Get file size ---")
+    size = await storage.get_file_size("test.txt")
+    print(f"File size: {size} bytes")
+    assert size == len(test_content), "Size mismatch!"
+
+    # Test 7: Create directory
+    print("\n--- Test 7: Create directory ---")
+    success = await storage.create_directory("new_dir")
+    print(f"Create directory: {success}")
+
+    exists = await storage.exists("new_dir")
+    print(f"Directory exists: {exists}")
+
+    # Test 8: Copy file
+    print("\n--- Test 8: Copy file ---")
+    success = await storage.copy_file("test.txt", "test_copy.txt")
+    print(f"Copy file: {success}")
+
+    content = await storage.read_file("test_copy.txt")
+    print(f"Copied content: {content.decode('utf-8')}")
+    assert content == test_content, "Copied content mismatch!"
+
+    # Test 9: Move file
+    print("\n--- Test 9: Move file ---")
+    success = await storage.move_file("test_copy.txt", "moved.txt")
+    print(f"Move file: {success}")
+
+    exists_old = await storage.exists("test_copy.txt")
+    exists_new = await storage.exists("moved.txt")
+    print(f"Old location exists: {exists_old}, New location exists: {exists_new}")
+    assert not exists_old and exists_new, "Move failed!"
+
+    # Test 10: Delete file
+    print("\n--- Test 10: Delete file ---")
+    success = await storage.delete_file("moved.txt")
+    print(f"Delete file: {success}")
+
+    exists = await storage.exists("moved.txt")
+    print(f"File exists after delete: {exists}")
+    assert not exists, "File should be deleted!"
+
+    # Test 11: Overwrite protection
+    print("\n--- Test 11: Overwrite protection ---")
+    success = await storage.save_file("protected.txt", b"Original", overwrite=False)
+    print(f"Save new file: {success}")
+
+    success = await storage.save_file("protected.txt", b"Modified", overwrite=False)
+    print(f"Attempt overwrite (should fail): {success}")
+    assert not success, "Should not overwrite!"
+
+    content = await storage.read_file("protected.txt")
+    print(f"Content unchanged: {content.decode('utf-8')}")
+    assert content == b"Original", "Content should be unchanged!"
+
+    # Test 12: Path traversal protection
+    print("\n--- Test 12: Path traversal protection ---")
+    try:
+        await storage.save_file("../outside.txt", b"Bad")
+        print("ERROR: Path traversal not prevented!")
+    except ValueError as e:
+        print(f"Path traversal prevented: {e}")
+
+    # Test 13: Delete directory
+    print("\n--- Test 13: Delete directory ---")
+    success = await storage.delete_directory("docs", recursive=True)
+    print(f"Delete directory: {success}")
+
+    # Cleanup
+    print("\n--- Cleanup ---")
+    await storage.delete_directory("", recursive=True)
+    print("Test cleanup completed")
+
+    print("\n✓ All LocalFileStorage tests passed!")
 
 
-async def test_file_storage():
-    """Test file-based storage."""
-    print("\n=== Testing FileStorage ===")
-    storage = FileStorage(storage_dir="test_data")
+async def test_path_handling():
+    """Test path handling edge cases."""
+    print("\n=== Testing Path Handling ===")
 
-    # Test basic operations
-    print("Setting key 'test' to 'hello file'")
-    await storage.set("test", "hello file")
+    storage = LocalFileStorage(root_path="test_path_data")
 
-    print("Getting key 'test':", await storage.get("test"))
-    print("Key exists:", await storage.exists("test"))
-    print("Count:", await storage.count())
+    # Test different path formats
+    print("\n--- Test path formats ---")
+    paths = [
+        "simple.txt",
+        "dir/file.txt",
+        "deep/nested/path/file.txt",
+        Path("pathlib.txt"),
+        Path("dir") / "pathlib.txt"
+    ]
 
-    # Test batch operations
-    print("\nSetting multiple items...")
-    await storage.set_many({
-        "user:1": {"name": "Charlie", "age": 35},
-        "user:2": {"name": "Diana", "age": 28},
-        "config:theme": "light",
-        "config:lang": "pl"
-    })
+    for path in paths:
+        await storage.save_file(path, b"test")
+        exists = await storage.exists(path)
+        print(f"  {path}: {exists}")
+        assert exists, f"Path {path} failed!"
 
-    print("Total count:", await storage.count())
-    print("Keys with 'user:' prefix:", await storage.list_keys("user:"))
-    print("Keys with 'config:' prefix:", await storage.list_keys("config:"))
+    # List all
+    all_files = await storage.list_directory(recursive=True)
+    print(f"\nAll files created: {all_files}")
 
-    # Test persistence - create new instance
-    print("\nTesting persistence...")
-    storage2 = FileStorage(storage_dir="test_data")
-    print("New instance count:", await storage2.count())
-    print("Retrieved 'test' from new instance:", await storage2.get("test"))
+    # Cleanup
+    await storage.delete_directory("", recursive=True)
 
-    # Test backup
-    print("\nCreating backup...")
-    backup_success = await storage.backup("test_data/backup.json")
-    print(f"Backup created: {backup_success}")
-
-    # Clear and restore
-    print("\nClearing storage...")
-    await storage.clear()
-    print("Count after clear:", await storage.count())
-
-    print("Restoring from backup...")
-    restore_success = await storage.restore("test_data/backup.json")
-    print(f"Restore successful: {restore_success}")
-    print("Count after restore:", await storage.count())
-
-    # Final cleanup
-    print("\nFinal cleanup...")
-    await storage.clear()
-
-    print("\n✓ FileStorage tests completed!")
+    print("\n✓ Path handling tests passed!")
 
 
-async def test_polymorphism():
-    """Test that both implementations work with BaseStorage interface."""
-    print("\n=== Testing Polymorphism ===")
+async def test_binary_and_text():
+    """Test binary and text file handling."""
+    print("\n=== Testing Binary and Text Files ===")
 
-    async def test_storage_interface(storage, storage_name):
-        print(f"\nTesting {storage_name}...")
-        await storage.set("poly", "morphism")
-        value = await storage.get("poly")
-        print(f"  Retrieved value: {value}")
-        await storage.clear()
+    storage = LocalFileStorage(root_path="test_binary_data")
 
-    memory = MemoryStorage()
-    file = FileStorage(storage_dir="test_data")
+    # Text file
+    print("\n--- Text file ---")
+    text = "Hello, 世界! 🌍"
+    await storage.save_file("text.txt", text.encode('utf-8'))
+    content = await storage.read_file("text.txt")
+    print(f"Text content: {content.decode('utf-8')}")
+    assert content.decode('utf-8') == text
 
-    await test_storage_interface(memory, "MemoryStorage")
-    await test_storage_interface(file, "FileStorage")
+    # Binary file
+    print("\n--- Binary file ---")
+    binary = bytes([0, 1, 2, 255, 254, 253])
+    await storage.save_file("binary.bin", binary)
+    content = await storage.read_file("binary.bin")
+    print(f"Binary content: {content.hex()}")
+    assert content == binary
 
-    print("\n✓ Polymorphism test completed!")
+    # Cleanup
+    await storage.delete_directory("", recursive=True)
+
+    print("\n✓ Binary and text tests passed!")
 
 
 async def main():
     """Run all tests."""
-    print("KBrain Storage Test Suite")
-    print("=" * 50)
+    print("=" * 60)
+    print("KBrain File Storage Test Suite")
+    print("=" * 60)
 
-    await test_memory_storage()
-    await test_file_storage()
-    await test_polymorphism()
+    await test_local_storage()
+    await test_path_handling()
+    await test_binary_and_text()
 
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print("All tests completed successfully! ✓")
+    print("=" * 60)
 
 
 if __name__ == "__main__":
