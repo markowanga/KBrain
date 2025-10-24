@@ -41,17 +41,24 @@ export class ApiClientError extends Error {
  * Build URL with query parameters
  */
 function buildUrl(endpoint: string, params?: Record<string, any>): string {
-  const url = new URL(endpoint, API_BASE_URL)
+  // Build base URL - handle both absolute and relative paths
+  let urlString = API_BASE_URL + endpoint
 
+  // Add query parameters if present
   if (params) {
+    const searchParams = new URLSearchParams()
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
-        url.searchParams.append(key, String(value))
+        searchParams.append(key, String(value))
       }
     })
+    const queryString = searchParams.toString()
+    if (queryString) {
+      urlString += `?${queryString}`
+    }
   }
 
-  return url.toString()
+  return urlString
 }
 
 /**
