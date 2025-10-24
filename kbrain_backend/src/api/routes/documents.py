@@ -28,7 +28,7 @@ from src.config.settings import settings
 
 # We'll use the storage from main.py, for now we'll import it
 # In a real implementation, this should be dependency-injected
-from kbrain_backend.libs.storage.src.kbrain_storage.storage import BaseFileStorage
+from kbrain_storage import BaseFileStorage
 
 router = APIRouter(tags=["documents"])
 
@@ -159,7 +159,7 @@ async def get_document(
         processed_at=document.processed_at,
         retry_count=document.retry_count,
         error_message=document.error_message,
-        metadata=document.metadata,
+        metadata=document.doc_metadata,
         created_at=document.created_at,
         updated_at=document.updated_at,
     )
@@ -280,7 +280,7 @@ async def upload_document(
         storage_backend=document.storage_backend,
         status=document.status,
         upload_date=document.upload_date,
-        metadata=document.metadata,
+        metadata=document.doc_metadata,
         created_at=document.created_at,
         updated_at=document.updated_at,
     )
@@ -419,10 +419,10 @@ async def update_document_status(
 
     # Update metadata if provided
     if status_update.metadata:
-        if document.metadata:
-            document.metadata.update(status_update.metadata)
+        if document.doc_metadata:
+            document.doc_metadata.update(status_update.metadata)
         else:
-            document.metadata = status_update.metadata
+            document.doc_metadata = status_update.metadata
 
     await db.commit()
     await db.refresh(document)
@@ -448,10 +448,10 @@ async def update_document_metadata(
         )
 
     # Update metadata
-    if document.metadata:
-        document.metadata.update(metadata_update.metadata)
+    if document.doc_metadata:
+        document.doc_metadata.update(metadata_update.metadata)
     else:
-        document.metadata = metadata_update.metadata
+        document.doc_metadata = metadata_update.metadata
 
     await db.commit()
     await db.refresh(document)
