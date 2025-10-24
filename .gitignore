@@ -1,6 +1,12 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+
 # Storage data directories
 kbrain_backend/data/
 kbrain_backend/test_data/
+kbrain_backend/storage_data/
 *.backup
 
 # Python cache
@@ -9,3 +15,6 @@ __pycache__/
 *$py.class
 .venv/
 .idea
+
+# Node modules
+node_modules/
