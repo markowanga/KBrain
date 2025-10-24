@@ -86,7 +86,7 @@ export const documentsApi = {
    */
   async download(documentId: string): Promise<Blob> {
     const response = await fetch(
-      `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/v1/documents/${documentId}/content`
+      `${import.meta.env.VITE_API_URL || '/api'}/v1/documents/${documentId}/content`
     )
 
     if (!response.ok) {
