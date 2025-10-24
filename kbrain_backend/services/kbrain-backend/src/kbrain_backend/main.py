@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from kbrain_backend.config.settings import settings
 from kbrain_backend.database.connection import init_db, close_db
-from kbrain_backend.api.routes import scopes, documents, statistics, health
+from kbrain_backend.api.routes import scopes, documents, statistics, health, tags
 from kbrain_backend.api.routes.documents import set_storage
 from kbrain_backend.utils.errors import (
     APIError,
@@ -99,6 +99,8 @@ app.add_exception_handler(Exception, general_exception_handler)
 # Register routers
 app.include_router(scopes.router, prefix="/v1")
 app.include_router(documents.router, prefix="")  # Documents have full paths
+app.include_router(tags.router, prefix="/v1")  # Tags routes
+app.include_router(tags.documents_router, prefix="")  # Document tags routes
 app.include_router(statistics.router, prefix="/v1")
 app.include_router(health.router, prefix="")  # Health endpoints at root
 

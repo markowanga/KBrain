@@ -104,6 +104,46 @@ class ScopeListResponse(BaseModel):
 
 
 # ============================================================================
+# Tag Schemas
+# ============================================================================
+
+class TagBase(BaseModel):
+    """Base tag schema."""
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = None
+    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class TagCreate(TagBase):
+    """Schema for creating a tag."""
+    pass
+
+
+class TagUpdate(BaseModel):
+    """Schema for updating a tag."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = None
+    color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class TagResponse(TagBase):
+    """Schema for tag response."""
+    id: UUID
+    scope_id: UUID
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TagListResponse(BaseModel):
+    """Schema for tag list response."""
+    tags: List[TagResponse]
+
+
+# ============================================================================
 # Document Schemas
 # ============================================================================
 
@@ -143,6 +183,7 @@ class DocumentResponse(DocumentBase):
     processed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = Field(None, validation_alias='doc_metadata')
+    tags: Optional[List[TagResponse]] = None
     created_at: datetime
     updated_at: datetime
 
@@ -176,6 +217,7 @@ class DocumentUploadResponse(BaseModel):
     status: str
     upload_date: datetime
     metadata: Optional[Dict[str, Any]] = None
+    tags: Optional[List[TagResponse]] = None
     created_at: datetime
     updated_at: datetime
 
@@ -211,6 +253,11 @@ class BatchUploadResponse(BaseModel):
     """Schema for batch upload response."""
     results: List[BatchUploadResult]
     summary: Dict[str, int]
+
+
+class DocumentTagsUpdate(BaseModel):
+    """Schema for updating document tags."""
+    tag_ids: List[UUID] = Field(..., description="List of tag IDs to assign to document")
 
 
 # ============================================================================

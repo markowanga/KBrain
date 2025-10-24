@@ -62,6 +62,11 @@ class Document(Base):
 
     # Relationships
     scope: Mapped["Scope"] = relationship("Scope", back_populates="documents")
+    tags: Mapped[List["Tag"]] = relationship(
+        "Tag",
+        secondary="document_tags",
+        back_populates="documents"
+    )
 
     def __repr__(self) -> str:
         return f"<Document(id={self.id}, filename={self.filename}, status={self.status})>"

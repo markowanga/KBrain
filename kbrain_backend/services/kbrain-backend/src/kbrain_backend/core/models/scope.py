@@ -35,6 +35,9 @@ class Scope(Base):
     documents: Mapped[List["Document"]] = relationship(
         "Document", back_populates="scope", cascade="all, delete-orphan"
     )
+    tags: Mapped[List["Tag"]] = relationship(
+        "Tag", back_populates="scope", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Scope(id={self.id}, name={self.name})>"
