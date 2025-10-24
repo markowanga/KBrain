@@ -1,156 +1,68 @@
 import { useState, useEffect } from 'react'
-
-const API_URL = 'http://localhost:8000'
+import { useScopes, useDocuments, useStatistics } from './hooks'
+import type { GlobalStatistics } from './api/types'
+import { formatBytes, getStatusColor } from './utils/format'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('dashboard')
-  const [scopes, setScopes] = useState([])
-  const [documents, setDocuments] = useState([])
-  const [statistics, setStatistics] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [selectedScope, setSelectedScope] = useState(null)
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'scopes' | 'documents'>('dashboard')
+  const [selectedScopeId, setSelectedScopeId] = useState<string | null>(null)
 
-  // Fetch statistics
-  const fetchStatistics = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`${API_URL}/v1/statistics`)
-      const data = await response.json()
-      setStatistics(data)
-      setError(null)
-    } catch (err) {
-      setError('Nie można pobrać statystyk')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Custom hooks
+  const scopesHook = useScopes()
+  const documentsHook = useDocuments()
+  const statisticsHook = useStatistics()
 
-  // Fetch scopes
-  const fetchScopes = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch(`${API_URL}/v1/scopes`)
-      const data = await response.json()
-      setScopes(data.items || [])
-      setError(null)
-    } catch (err) {
-      setError('Nie można pobrać scope\'ów')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Fetch documents
-  const fetchDocuments = async (scopeId) => {
-    try {
-      setLoading(true)
-      const response = await fetch(`${API_URL}/v1/scopes/${scopeId}/documents`)
-      const data = await response.json()
-      setDocuments(data.items || [])
-      setError(null)
-    } catch (err) {
-      setError('Nie można pobrać dokumentów')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Create scope
-  const createScope = async (name, description) => {
-    try {
-      setLoading(true)
-      const response = await fetch(`${API_URL}/v1/scopes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description,
-          allowed_extensions: ['pdf', 'docx', 'txt', 'jpg', 'png'],
-          storage_backend: 'local'
-        })
-      })
-      if (!response.ok) throw new Error('Błąd tworzenia scope')
-      await fetchScopes()
-      setError(null)
-    } catch (err) {
-      setError('Nie można utworzyć scope')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Delete scope
-  const deleteScope = async (scopeId) => {
-    try {
-      setLoading(true)
-      const response = await fetch(`${API_URL}/v1/scopes/${scopeId}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) throw new Error('Błąd usuwania scope')
-      await fetchScopes()
-      setError(null)
-    } catch (err) {
-      setError('Nie można usunąć scope')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Upload document
-  const uploadDocument = async (scopeId, file) => {
-    try {
-      setLoading(true)
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const response = await fetch(`${API_URL}/v1/scopes/${scopeId}/documents`, {
-        method: 'POST',
-        body: formData
-      })
-      if (!response.ok) throw new Error('Błąd uploadu')
-      await fetchDocuments(scopeId)
-      setError(null)
-    } catch (err) {
-      setError('Nie można wysłać dokumentu')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Delete document
-  const deleteDocument = async (documentId) => {
-    try {
-      setLoading(true)
-      const response = await fetch(`${API_URL}/v1/documents/${documentId}`, {
-        method: 'DELETE'
-      })
-      if (!response.ok) throw new Error('Błąd usuwania dokumentu')
-      if (selectedScope) {
-        await fetchDocuments(selectedScope)
-      }
-      setError(null)
-    } catch (err) {
-      setError('Nie można usunąć dokumentu')
-      console.error(err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
+  // Fetch data when tab changes
   useEffect(() => {
     if (activeTab === 'dashboard') {
-      fetchStatistics()
+      statisticsHook.fetchGlobalStatistics()
     } else if (activeTab === 'scopes') {
-      fetchScopes()
+      scopesHook.fetchScopes()
+    } else if (activeTab === 'documents') {
+      scopesHook.fetchScopes()
     }
   }, [activeTab])
+
+  // Fetch documents when scope is selected
+  useEffect(() => {
+    if (selectedScopeId) {
+      documentsHook.fetchDocuments(selectedScopeId)
+    }
+  }, [selectedScopeId])
+
+  const handleCreateScope = async (name: string, description: string) => {
+    const scope = await scopesHook.createScope({
+      name,
+      description,
+      allowed_extensions: ['pdf', 'docx', 'txt', 'jpg', 'png', 'doc', 'xlsx', 'pptx'],
+      storage_backend: 'local',
+    })
+    return scope !== null
+  }
+
+  const handleDeleteScope = async (scopeId: string) => {
+    const success = await scopesHook.deleteScope(scopeId)
+    if (success && selectedScopeId === scopeId) {
+      setSelectedScopeId(null)
+    }
+  }
+
+  const handleUploadDocument = async (scopeId: string, file: File) => {
+    const doc = await documentsHook.uploadDocument(scopeId, file)
+    return doc !== null
+  }
+
+  const handleDeleteDocument = async (documentId: string) => {
+    return await documentsHook.deleteDocument(documentId)
+  }
+
+  const handleSelectScope = (scopeId: string) => {
+    setSelectedScopeId(scopeId)
+  }
+
+  // Combined loading and error states
+  const loading = scopesHook.loading || documentsHook.loading || statisticsHook.loading
+  const error = scopesHook.error || documentsHook.error || statisticsHook.error
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -207,6 +119,16 @@ function App() {
         {error && (
           <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
             <p className="text-red-700 font-semibold">{error}</p>
+            <button
+              onClick={() => {
+                scopesHook.clearError()
+                documentsHook.clearError()
+                statisticsHook.clearError()
+              }}
+              className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+            >
+              Zamknij
+            </button>
           </div>
         )}
 
@@ -216,25 +138,24 @@ function App() {
           </div>
         )}
 
-        {!loading && activeTab === 'dashboard' && <Dashboard statistics={statistics} />}
+        {!loading && activeTab === 'dashboard' && (
+          <Dashboard statistics={statisticsHook.globalStats} />
+        )}
         {!loading && activeTab === 'scopes' && (
           <Scopes
-            scopes={scopes}
-            onCreateScope={createScope}
-            onDeleteScope={deleteScope}
+            scopes={scopesHook.scopes?.scopes || []}
+            onCreateScope={handleCreateScope}
+            onDeleteScope={handleDeleteScope}
           />
         )}
         {!loading && activeTab === 'documents' && (
           <Documents
-            scopes={scopes}
-            documents={documents}
-            selectedScope={selectedScope}
-            onSelectScope={(scopeId) => {
-              setSelectedScope(scopeId)
-              fetchDocuments(scopeId)
-            }}
-            onUploadDocument={uploadDocument}
-            onDeleteDocument={deleteDocument}
+            scopes={scopesHook.scopes?.scopes || []}
+            documents={documentsHook.documents?.documents || []}
+            selectedScope={selectedScopeId}
+            onSelectScope={handleSelectScope}
+            onUploadDocument={handleUploadDocument}
+            onDeleteDocument={handleDeleteDocument}
           />
         )}
       </main>
@@ -243,7 +164,7 @@ function App() {
 }
 
 // Dashboard Component
-function Dashboard({ statistics }) {
+function Dashboard({ statistics }: { statistics: GlobalStatistics | null }) {
   if (!statistics) {
     return (
       <div className="text-center py-12">
@@ -268,19 +189,33 @@ function Dashboard({ statistics }) {
         />
         <StatCard
           title="Łączny Rozmiar"
-          value={formatBytes(statistics.total_storage_used || 0)}
+          value={formatBytes(statistics.total_size || 0)}
           color="purple"
         />
       </div>
 
-      {statistics.by_status && (
+      {statistics.documents_by_status && (
         <div className="mt-8">
           <h3 className="text-xl font-bold text-gray-800 mb-4">Status Dokumentów</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(statistics.by_status).map(([status, count]) => (
+            {Object.entries(statistics.documents_by_status).map(([status, count]) => (
               <div key={status} className="bg-white rounded-lg shadow-md p-4">
                 <p className="text-gray-600 text-sm uppercase">{status}</p>
                 <p className="text-2xl font-bold text-blue-600">{count}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {statistics.documents_by_extension && Object.keys(statistics.documents_by_extension).length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Dokumenty według rozszerzenia</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(statistics.documents_by_extension).map(([ext, count]) => (
+              <div key={ext} className="bg-white rounded-lg shadow-md p-4">
+                <p className="text-gray-600 text-sm uppercase">.{ext}</p>
+                <p className="text-2xl font-bold text-indigo-600">{count}</p>
               </div>
             ))}
           </div>
@@ -291,11 +226,11 @@ function Dashboard({ statistics }) {
 }
 
 // StatCard Component
-function StatCard({ title, value, color }) {
+function StatCard({ title, value, color }: { title: string; value: string | number; color: 'blue' | 'indigo' | 'purple' }) {
   const colors = {
     blue: 'from-blue-500 to-blue-600',
     indigo: 'from-indigo-500 to-indigo-600',
-    purple: 'from-purple-500 to-purple-600'
+    purple: 'from-purple-500 to-purple-600',
   }
 
   return (
@@ -307,17 +242,32 @@ function StatCard({ title, value, color }) {
 }
 
 // Scopes Component
-function Scopes({ scopes, onCreateScope, onDeleteScope }) {
+interface ScopesProps {
+  scopes: Array<{
+    id: string
+    name: string
+    description: string | null
+    is_active: boolean
+    document_count: number
+    total_size: number
+  }>
+  onCreateScope: (name: string, description: string) => Promise<boolean>
+  onDeleteScope: (scopeId: string) => Promise<void>
+}
+
+function Scopes({ scopes, onCreateScope, onDeleteScope }: ScopesProps) {
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    await onCreateScope(name, description)
-    setName('')
-    setDescription('')
-    setShowForm(false)
+    const success = await onCreateScope(name, description)
+    if (success) {
+      setName('')
+      setDescription('')
+      setShowForm(false)
+    }
   }
 
   return (
@@ -354,7 +304,7 @@ function Scopes({ scopes, onCreateScope, onDeleteScope }) {
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Opis scope'a"
-                rows="3"
+                rows={3}
               />
             </div>
             <button
@@ -369,9 +319,20 @@ function Scopes({ scopes, onCreateScope, onDeleteScope }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {scopes.map((scope) => (
-          <div key={scope.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200">
+          <div
+            key={scope.id}
+            className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-200"
+          >
             <h3 className="text-xl font-bold text-gray-800 mb-2">{scope.name}</h3>
             <p className="text-gray-600 mb-4">{scope.description || 'Brak opisu'}</p>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-500">
+                Dokumenty: {scope.document_count || 0}
+              </span>
+              <span className="text-sm text-gray-500">
+                {formatBytes(scope.total_size || 0)}
+              </span>
+            </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-500">
                 {scope.is_active ? '✓ Aktywny' : '✗ Nieaktywny'}
@@ -397,15 +358,42 @@ function Scopes({ scopes, onCreateScope, onDeleteScope }) {
 }
 
 // Documents Component
-function Documents({ scopes, documents, selectedScope, onSelectScope, onUploadDocument, onDeleteDocument }) {
-  const [file, setFile] = useState(null)
+interface DocumentsProps {
+  scopes: Array<{
+    id: string
+    name: string
+  }>
+  documents: Array<{
+    id: string
+    original_name: string
+    file_size: number
+    status: string
+    upload_date: string
+  }>
+  selectedScope: string | null
+  onSelectScope: (scopeId: string) => void
+  onUploadDocument: (scopeId: string, file: File) => Promise<boolean>
+  onDeleteDocument: (documentId: string) => Promise<boolean>
+}
 
-  const handleUpload = async (e) => {
+function Documents({
+  scopes,
+  documents,
+  selectedScope,
+  onSelectScope,
+  onUploadDocument,
+  onDeleteDocument,
+}: DocumentsProps) {
+  const [file, setFile] = useState<File | null>(null)
+
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     if (file && selectedScope) {
-      await onUploadDocument(selectedScope, file)
-      setFile(null)
-      e.target.reset()
+      const success = await onUploadDocument(selectedScope, file)
+      if (success) {
+        setFile(null)
+        ;(e.target as HTMLFormElement).reset()
+      }
     }
   }
 
@@ -438,7 +426,7 @@ function Documents({ scopes, documents, selectedScope, onSelectScope, onUploadDo
             <div className="mb-4">
               <input
                 type="file"
-                onChange={(e) => setFile(e.target.files[0])}
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
                 className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               />
@@ -506,26 +494,6 @@ function Documents({ scopes, documents, selectedScope, onSelectScope, onUploadDo
       )}
     </div>
   )
-}
-
-// Helper functions
-function formatBytes(bytes, decimals = 2) {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
-}
-
-function getStatusColor(status) {
-  const colors = {
-    added: 'bg-blue-100 text-blue-800',
-    processing: 'bg-yellow-100 text-yellow-800',
-    processed: 'bg-green-100 text-green-800',
-    failed: 'bg-red-100 text-red-800'
-  }
-  return colors[status] || 'bg-gray-100 text-gray-800'
 }
 
 export default App
