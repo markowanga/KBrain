@@ -62,4 +62,5 @@ disable_error_code = ["no-untyped-def"]
 members = [
     "libs/kbrain-storage",
     "services/kbrain_backend",
+    "libs/kbrain-processor-orchestrator",
 ]
