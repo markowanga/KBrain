@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from kbrain_backend.api.schemas import HealthResponse, VersionResponse, ServiceStatus
 from kbrain_backend.config.settings import settings
 from kbrain_backend.database.connection import get_db
+from kbrain_backend.utils.logger import logger
 
 router = APIRouter(tags=["health"])
 
@@ -23,7 +24,8 @@ async def health_check(
     db_status = "healthy"
     try:
         await db.execute(text("SELECT 1"))
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Database health check failed: {e}")
         db_status = "unhealthy"
 
     # Check storage (simplified)

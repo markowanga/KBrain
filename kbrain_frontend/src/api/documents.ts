@@ -95,6 +95,15 @@ export const documentsApi = {
 
     return response.blob()
   },
+
+  /**
+   * Update tags on a document
+   */
+  async updateTags(documentId: string, tagIds: string[]): Promise<DocumentResponse> {
+    return apiClient.put<DocumentResponse>(`/v1/documents/${documentId}/tags`, {
+      tag_ids: tagIds,
+    })
+  },
 }
 
 export default documentsApi

@@ -1,11 +1,15 @@
 """Error handling utilities."""
 
 from typing import Optional, List, Dict, Any
+import traceback
 
 from fastapi import Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
+
+from kbrain_backend.utils.logger import logger
+from kbrain_backend.config.settings import settings
 
 
 class APIError(Exception):
@@ -120,15 +124,25 @@ async def validation_error_handler(
 
 async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handle general exceptions."""
-    # Log the error
-    print(f"Unhandled exception: {exc}")
+    # Log the full exception with traceback
+    logger.exception(
+        f"Unhandled exception in {request.method} {request.url.path}: {exc}"
+    )
 
-    error_response = {
+    error_response: Dict[str, Any] = {
         "error": {
             "code": "INTERNAL_ERROR",
             "message": "An internal error occurred",
         }
     }
+
+    # In development mode, include error details
+    if settings.log_level.upper() == "DEBUG":
+        error_response["error"]["details"] = {
+            "exception": str(exc),
+            "type": type(exc).__name__,
+            "traceback": traceback.format_exc(),
+        }
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -140,14 +154,25 @@ async def database_error_handler(
     request: Request, exc: SQLAlchemyError
 ) -> JSONResponse:
     """Handle database errors."""
-    print(f"Database error: {exc}")
+    # Log the full exception with traceback
+    logger.exception(
+        f"Database error in {request.method} {request.url.path}: {exc}"
+    )
 
-    error_response = {
+    error_response: Dict[str, Any] = {
         "error": {
             "code": "DATABASE_ERROR",
             "message": "A database error occurred",
         }
     }
+
+    # In development mode, include error details
+    if settings.log_level.upper() == "DEBUG":
+        error_response["error"]["details"] = {
+            "exception": str(exc),
+            "type": type(exc).__name__,
+            "traceback": traceback.format_exc(),
+        }
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

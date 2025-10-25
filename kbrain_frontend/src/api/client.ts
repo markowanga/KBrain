@@ -11,6 +11,9 @@ import type { ApiError } from './types'
 // Configuration
 // ============================================================================
 
+// API base URL - /api prefix required by nginx routing
+// Backend receives full paths with /api prefix (e.g., /api/v1/scopes)
+// Vite proxy and Nginx both preserve /api prefix
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 // ============================================================================

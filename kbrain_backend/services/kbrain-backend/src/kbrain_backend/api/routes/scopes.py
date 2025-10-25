@@ -27,7 +27,6 @@ router = APIRouter(prefix="/scopes", tags=["scopes"])
 async def list_scopes(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
-    is_active: Optional[bool] = Query(None),
     sort: str = Query("created_at", pattern="^(name|created_at)$"),
     order: str = Query("desc", pattern="^(asc|desc)$"),
     db: AsyncSession = Depends(get_db),
@@ -35,10 +34,6 @@ async def list_scopes(
     """List all scopes with pagination."""
     # Build query
     query = select(Scope)
-
-    # Filter by active status
-    if is_active is not None:
-        query = query.where(Scope.is_active == is_active)
 
     # Count total items
     count_query = select(func.count()).select_from(query.subquery())
@@ -79,7 +74,6 @@ async def list_scopes(
             description=scope.description,
             allowed_extensions=scope.allowed_extensions,
             storage_backend=scope.storage_backend,
-            is_active=scope.is_active,
             document_count=doc_count,
             total_size=total_size,
             created_at=scope.created_at,
@@ -153,7 +147,6 @@ async def get_scope(
         allowed_extensions=scope.allowed_extensions,
         storage_backend=scope.storage_backend,
         storage_config=scope.storage_config,
-        is_active=scope.is_active,
         created_at=scope.created_at,
         updated_at=scope.updated_at,
         statistics=statistics,
@@ -190,7 +183,6 @@ async def create_scope(
         allowed_extensions=scope_data.allowed_extensions,
         storage_backend=scope_data.storage_backend or "local",
         storage_config=scope_data.storage_config,
-        is_active=True,
     )
 
     db.add(scope)
@@ -204,7 +196,6 @@ async def create_scope(
         allowed_extensions=scope.allowed_extensions,
         storage_backend=scope.storage_backend,
         storage_config=scope.storage_config,
-        is_active=scope.is_active,
         created_at=scope.created_at,
         updated_at=scope.updated_at,
     )
@@ -252,9 +243,6 @@ async def update_scope(
     if scope_data.allowed_extensions is not None:
         scope.allowed_extensions = scope_data.allowed_extensions
 
-    if scope_data.is_active is not None:
-        scope.is_active = scope_data.is_active
-
     await db.commit()
     await db.refresh(scope)
 
@@ -265,7 +253,6 @@ async def update_scope(
         allowed_extensions=scope.allowed_extensions,
         storage_backend=scope.storage_backend,
         storage_config=scope.storage_config,
-        is_active=scope.is_active,
         created_at=scope.created_at,
         updated_at=scope.updated_at,
     )
@@ -274,10 +261,9 @@ async def update_scope(
 @router.delete("/{scope_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_scope(
     scope_id: UUID,
-    hard_delete: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Delete a scope (soft delete by default, hard delete if specified)."""
+    """Delete a scope permanently from database."""
     query = select(Scope).where(Scope.id == scope_id)
     result = await db.execute(query)
     scope = result.scalar_one_or_none()
@@ -288,12 +274,7 @@ async def delete_scope(
             detail={"error": {"code": "NOT_FOUND", "message": "Scope not found"}},
         )
 
-    if hard_delete:
-        # Hard delete - remove from database
-        await db.delete(scope)
-    else:
-        # Soft delete - set is_active to False
-        scope.is_active = False
-
+    # Delete scope (cascade will delete related documents and tags)
+    await db.delete(scope)
     await db.commit()
     return None

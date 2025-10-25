@@ -70,7 +70,6 @@ class ScopeUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=3, max_length=255)
     description: Optional[str] = None
     allowed_extensions: Optional[List[str]] = Field(None, min_length=1)
-    is_active: Optional[bool] = None
 
 
 class ScopeStatistics(BaseModel):
@@ -85,7 +84,6 @@ class ScopeResponse(ScopeBase):
     """Schema for scope response."""
 
     id: UUID
-    is_active: bool
     created_at: datetime
     updated_at: datetime
     statistics: Optional[ScopeStatistics] = None
@@ -101,7 +99,6 @@ class ScopeListItem(BaseModel):
     description: Optional[str]
     allowed_extensions: List[str]
     storage_backend: str
-    is_active: bool
     document_count: int = 0
     total_size: int = 0
     created_at: datetime

@@ -45,14 +45,11 @@ export const scopesApi = {
   },
 
   /**
-   * Delete a scope
+   * Delete a scope permanently
    * @param scopeId - The scope ID
-   * @param hardDelete - If true, permanently delete. If false, soft delete (set is_active=false)
    */
-  async delete(scopeId: string, hardDelete = false): Promise<void> {
-    return apiClient.delete(`/v1/scopes/${scopeId}`, {
-      params: { hard_delete: hardDelete },
-    })
+  async delete(scopeId: string): Promise<void> {
+    return apiClient.delete(`/v1/scopes/${scopeId}`)
   },
 }
 

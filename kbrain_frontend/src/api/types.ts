@@ -39,7 +39,6 @@ export interface Scope {
   allowed_extensions: string[]
   storage_backend: string
   storage_config: Record<string, any> | null
-  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -81,7 +80,6 @@ export interface ScopeUpdate {
   name?: string
   description?: string | null
   allowed_extensions?: string[]
-  is_active?: boolean
 }
 
 // ============================================================================
@@ -214,7 +212,6 @@ export interface GlobalStatistics {
 export interface ScopeListParams {
   page?: number
   per_page?: number
-  is_active?: boolean
   sort?: 'name' | 'created_at'
   order?: 'asc' | 'desc'
 }

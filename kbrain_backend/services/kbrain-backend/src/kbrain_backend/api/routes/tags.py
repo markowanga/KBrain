@@ -54,15 +54,15 @@ async def create_tag(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new tag in a scope."""
-    # Verify scope exists and is active
-    scope_query = select(Scope).where(Scope.id == scope_id, Scope.is_active)
+    # Verify scope exists
+    scope_query = select(Scope).where(Scope.id == scope_id)
     scope = await db.scalar(scope_query)
 
     if not scope:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                "error": {"code": "NOT_FOUND", "message": "Scope not found or inactive"}
+                "error": {"code": "NOT_FOUND", "message": "Scope not found"}
             },
         )
 

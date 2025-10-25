@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, TYPE_CHECKING
 from uuid import uuid4
 
-from sqlalchemy import Boolean, String, Text, ARRAY, JSON
+from sqlalchemy import String, Text, ARRAY, JSON
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,7 +30,6 @@ class Scope(Base):
     allowed_extensions: Mapped[List[str]] = mapped_column(ARRAY(String), nullable=False)
     storage_backend: Mapped[str] = mapped_column(String(50), default="local")
     storage_config: Mapped[dict] = mapped_column(JSON, nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=datetime.utcnow
     )

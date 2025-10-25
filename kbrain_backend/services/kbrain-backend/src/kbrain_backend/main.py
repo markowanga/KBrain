@@ -59,7 +59,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         await init_db()
         logger.info("Database initialized successfully")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.exception(f"Failed to initialize database: {e}")
+        raise
 
     # Set storage for document routes
     set_storage(storage)
@@ -78,9 +79,9 @@ app = FastAPI(
     version=settings.app_version,
     description="Knowledge Management System with Flexible Document Processing",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/v1/openapi.json",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/v1/openapi.json",
 )
 
 # CORS middleware
@@ -98,13 +99,13 @@ app.add_exception_handler(RequestValidationError, validation_error_handler)  # t
 app.add_exception_handler(SQLAlchemyError, database_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(Exception, general_exception_handler)
 
-# Register routers
-app.include_router(scopes.router, prefix="/v1")
-app.include_router(documents.router, prefix="")  # Documents have full paths
-app.include_router(tags.router, prefix="/v1")  # Tags routes
-app.include_router(tags.documents_router, prefix="")  # Document tags routes
-app.include_router(statistics.router, prefix="/v1")
-app.include_router(health.router, prefix="")  # Health endpoints at root
+# Register routers with /api prefix (required by nginx routing)
+app.include_router(scopes.router, prefix="/api/v1")
+app.include_router(documents.router, prefix="/api")  # Documents have full paths with /api/v1
+app.include_router(tags.router, prefix="/api/v1")  # Tags routes
+app.include_router(tags.documents_router, prefix="/api")  # Document tags routes
+app.include_router(statistics.router, prefix="/api/v1")
+app.include_router(health.router, prefix="/api")  # Health endpoints under /api
 
 
 # Root endpoint
@@ -153,7 +154,10 @@ async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] =
             raise HTTPException(status_code=500, detail="Failed to save file")
 
         return {"success": True, "path": file_path, "size": len(content)}
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception(f"Error in legacy file upload endpoint: {file_path}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

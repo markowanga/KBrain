@@ -27,6 +27,7 @@ from kbrain_backend.core.models.scope import Scope
 from kbrain_backend.core.models.document import Document
 from kbrain_backend.database.connection import get_db
 from kbrain_backend.config.settings import settings
+from kbrain_backend.utils.logger import logger
 
 # We'll use the storage from main.py, for now we'll import it
 # In a real implementation, this should be dependency-injected
@@ -182,15 +183,15 @@ async def upload_document(
     storage: BaseFileStorage = Depends(get_storage),
 ) -> DocumentUploadResponse:
     """Upload a new document to a scope."""
-    # Verify scope exists and is active
-    scope_query = select(Scope).where(Scope.id == scope_id, Scope.is_active)
+    # Verify scope exists
+    scope_query = select(Scope).where(Scope.id == scope_id)
     scope = await db.scalar(scope_query)
 
     if not scope:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                "error": {"code": "NOT_FOUND", "message": "Scope not found or inactive"}
+                "error": {"code": "NOT_FOUND", "message": "Scope not found"}
             },
         )
 
@@ -250,6 +251,7 @@ async def upload_document(
     try:
         success = await storage.save_file(storage_path, content)
         if not success:
+            logger.error(f"Failed to save file to storage: {storage_path}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
@@ -259,7 +261,10 @@ async def upload_document(
                     }
                 },
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception(f"Error saving file to storage: {storage_path}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "STORAGE_ERROR", "message": str(e)}},
@@ -353,6 +358,9 @@ async def download_document_content(
     try:
         content = await storage.read_file(document.storage_path)
         if content is None:
+            logger.warning(
+                f"File not found in storage for document {document_id}: {document.storage_path}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -362,7 +370,12 @@ async def download_document_content(
                     }
                 },
             )
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.exception(
+            f"Error reading file from storage for document {document_id}: {document.storage_path}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": {"code": "STORAGE_ERROR", "message": str(e)}},
