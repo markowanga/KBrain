@@ -51,40 +51,6 @@ export const tagsApi = {
   async delete(scopeId: string, tagId: string): Promise<void> {
     return apiClient.delete(`/v1/scopes/${scopeId}/tags/${tagId}`)
   },
-
-  /**
-   * Add a tag to a document
-   */
-  async addToDocument(scopeId: string, tagId: string, documentId: string): Promise<DocumentResponse> {
-    return apiClient.post<DocumentResponse>(
-      `/v1/scopes/${scopeId}/tags/${tagId}/documents/${documentId}`
-    )
-  },
-
-  /**
-   * Remove a tag from a document
-   */
-  async removeFromDocument(scopeId: string, tagId: string, documentId: string): Promise<void> {
-    return apiClient.delete(`/v1/scopes/${scopeId}/tags/${tagId}/documents/${documentId}`)
-  },
-
-  /**
-   * Update all tags on a document at once
-   */
-  async updateDocumentTags(documentId: string, tagIds: string[]): Promise<DocumentResponse> {
-    return apiClient.put<DocumentResponse>(
-      `/v1/documents/${documentId}/tags`,
-      { tag_ids: tagIds }
-    )
-  },
-
-  /**
-   * Get all tags assigned to a document
-   */
-  async getDocumentTags(documentId: string): Promise<Tag[]> {
-    const response = await apiClient.get<TagListResponse>(`/v1/documents/${documentId}/tags`)
-    return response.tags
-  },
 }
 
 export default tagsApi

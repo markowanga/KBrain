@@ -28,10 +28,6 @@ interface UseTagsReturn extends UseTagsState {
   updateTag: (scopeId: string, tagId: string, data: TagUpdate) => Promise<Tag | null>
   deleteTag: (scopeId: string, tagId: string) => Promise<boolean>
 
-  // Document-tag operations
-  addTagToDocument: (scopeId: string, tagId: string, documentId: string) => Promise<boolean>
-  removeTagFromDocument: (scopeId: string, tagId: string, documentId: string) => Promise<boolean>
-
   // State management
   clearError: () => void
   clearSelectedTag: () => void
@@ -152,46 +148,6 @@ export function useTags(): UseTagsReturn {
     }
   }, [updateState, fetchTags])
 
-  // Add tag to document
-  const addTagToDocument = useCallback(async (
-    scopeId: string,
-    tagId: string,
-    documentId: string
-  ): Promise<boolean> => {
-    try {
-      updateState({ loading: true, error: null })
-      await tagsApi.addToDocument(scopeId, tagId, documentId)
-      updateState({ loading: false })
-      return true
-    } catch (err) {
-      const errorMessage = err instanceof ApiClientError
-        ? err.message
-        : 'Nie można dodać tagu do dokumentu'
-      updateState({ error: errorMessage, loading: false })
-      return false
-    }
-  }, [updateState])
-
-  // Remove tag from document
-  const removeTagFromDocument = useCallback(async (
-    scopeId: string,
-    tagId: string,
-    documentId: string
-  ): Promise<boolean> => {
-    try {
-      updateState({ loading: true, error: null })
-      await tagsApi.removeFromDocument(scopeId, tagId, documentId)
-      updateState({ loading: false })
-      return true
-    } catch (err) {
-      const errorMessage = err instanceof ApiClientError
-        ? err.message
-        : 'Nie można usunąć tagu z dokumentu'
-      updateState({ error: errorMessage, loading: false })
-      return false
-    }
-  }, [updateState])
-
   // Clear error
   const clearError = useCallback(() => {
     updateState({ error: null })
@@ -209,8 +165,6 @@ export function useTags(): UseTagsReturn {
     createTag,
     updateTag,
     deleteTag,
-    addTagToDocument,
-    removeTagFromDocument,
     clearError,
     clearSelectedTag,
   }
