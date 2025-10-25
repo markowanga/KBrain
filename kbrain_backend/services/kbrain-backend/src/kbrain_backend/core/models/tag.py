@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import String, Text, ForeignKey, JSON, Table, Column, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from kbrain_backend.core.models.document import Document
-from kbrain_backend.core.models.scope import Scope
 from kbrain_backend.database.connection import Base
+
+if TYPE_CHECKING:
+    from kbrain_backend.core.models.document import Document
+    from kbrain_backend.core.models.scope import Scope
 
 
 # Association table for many-to-many relationship between documents and tags
@@ -65,8 +67,8 @@ class Tag(Base):
     )
 
     # Relationships
-    scope: Mapped[Scope] = relationship("Scope", back_populates="tags")
-    documents: Mapped[List[Document]] = relationship(
+    scope: Mapped["Scope"] = relationship("Scope", back_populates="tags")
+    documents: Mapped[List["Document"]] = relationship(
         "Document", secondary=document_tags, back_populates="tags"
     )
 

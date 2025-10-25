@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from kbrain_backend.api.schemas import (
     DocumentResponse,
@@ -77,7 +78,7 @@ async def list_documents(
         )
 
     # Build query
-    query = select(Document).where(Document.scope_id == scope_id)
+    query = select(Document).options(selectinload(Document.tags)).where(Document.scope_id == scope_id)
 
     # Apply filters
     if status_filter:
@@ -128,7 +129,7 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentDetailResponse:
     """Get details of a specific document."""
-    query = select(Document).where(Document.id == document_id)
+    query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
     result = await db.execute(query)
     document = result.scalar_one_or_none()
 
@@ -282,7 +283,7 @@ async def upload_document(
 
     db.add(document)
     await db.commit()
-    await db.refresh(document)
+    await db.refresh(document, attribute_names=["tags"])
 
     return DocumentUploadResponse(
         id=cast(UUID, document.id),
@@ -296,6 +297,7 @@ async def upload_document(
         status=document.status,
         upload_date=document.upload_date,
         metadata=document.doc_metadata,
+        tags=[],
         created_at=document.created_at,
         updated_at=document.updated_at,
     )
@@ -417,7 +419,7 @@ async def update_document_status(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentResponse:
     """Update document status."""
-    query = select(Document).where(Document.id == document_id)
+    query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
     result = await db.execute(query)
     document = result.scalar_one_or_none()
 
@@ -457,7 +459,7 @@ async def update_document_metadata(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentResponse:
     """Update document metadata."""
-    query = select(Document).where(Document.id == document_id)
+    query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
     result = await db.execute(query)
     document = result.scalar_one_or_none()
 

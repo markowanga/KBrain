@@ -1,16 +1,18 @@
 """Document database model."""
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import String, Text, BigInteger, Integer, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID, TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from kbrain_backend.core.models.scope import Scope
-from kbrain_backend.core.models.tag import Tag
 from kbrain_backend.database.connection import Base
+
+if TYPE_CHECKING:
+    from kbrain_backend.core.models.scope import Scope
+    from kbrain_backend.core.models.tag import Tag
 
 
 class Document(Base):
@@ -67,8 +69,8 @@ class Document(Base):
     )
 
     # Relationships
-    scope: Mapped[Scope] = relationship("Scope", back_populates="documents")
-    tags: Mapped[List[Tag]] = relationship(
+    scope: Mapped["Scope"] = relationship("Scope", back_populates="documents")
+    tags: Mapped[List["Tag"]] = relationship(
         "Tag", secondary="document_tags", back_populates="documents"
     )
 
