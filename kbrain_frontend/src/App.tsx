@@ -14,6 +14,33 @@ function App() {
   const statisticsHook = useStatistics()
   const tagsHook = useTags()
 
+  // Load selected scope from localStorage on mount
+  useEffect(() => {
+    const savedScopeId = localStorage.getItem('kbrain_selected_scope_id')
+    if (savedScopeId) {
+      setSelectedScopeId(savedScopeId)
+    }
+  }, [])
+
+  // Save selected scope to localStorage when it changes
+  useEffect(() => {
+    if (selectedScopeId) {
+      localStorage.setItem('kbrain_selected_scope_id', selectedScopeId)
+    } else {
+      localStorage.removeItem('kbrain_selected_scope_id')
+    }
+  }, [selectedScopeId])
+
+  // Validate that selected scope still exists, clear if deleted
+  useEffect(() => {
+    if (selectedScopeId && scopesHook.scopes?.scopes) {
+      const scopeExists = scopesHook.scopes.scopes.some(scope => scope.id === selectedScopeId)
+      if (!scopeExists) {
+        setSelectedScopeId(null)
+      }
+    }
+  }, [selectedScopeId, scopesHook.scopes])
+
   // Fetch data when tab changes
   useEffect(() => {
     if (activeTab === 'dashboard') {
@@ -42,6 +69,10 @@ function App() {
       allowed_extensions: allowedExtensions,
       storage_backend: 'local',
     })
+    if (scope) {
+      // Auto-select newly created scope
+      setSelectedScopeId(scope.id)
+    }
     return scope !== null
   }
 
@@ -144,47 +175,77 @@ function App() {
       {/* Navigation */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-2 py-4">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                activeTab === 'dashboard'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab('scopes')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                activeTab === 'scopes'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Scopes
-            </button>
-            <button
-              onClick={() => setActiveTab('documents')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                activeTab === 'documents'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Documents
-            </button>
-            <button
-              onClick={() => setActiveTab('tags')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
-                activeTab === 'tags'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Tags
-            </button>
+          <div className="flex justify-between items-center py-4">
+            {/* Navigation Tabs */}
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  activeTab === 'dashboard'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveTab('scopes')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  activeTab === 'scopes'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Scopes
+              </button>
+              <button
+                onClick={() => setActiveTab('documents')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  activeTab === 'documents'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Documents
+              </button>
+              <button
+                onClick={() => setActiveTab('tags')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  activeTab === 'tags'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transform scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Tags
+              </button>
+            </div>
+
+            {/* Active Scope Selector */}
+            {(activeTab === 'documents' || activeTab === 'tags') && (
+              <div className="flex items-center gap-3">
+                <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Active Scope:</label>
+                <select
+                  value={selectedScopeId || ''}
+                  onChange={(e) => handleSelectScope(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm min-w-[200px]"
+                >
+                  <option value="">-- No scope selected --</option>
+                  {scopesHook.scopes?.scopes.map((scope) => (
+                    <option key={scope.id} value={scope.id}>
+                      {scope.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedScopeId && (
+                  <button
+                    onClick={() => setSelectedScopeId(null)}
+                    className="px-3 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-300 transition-all"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </nav>
@@ -205,35 +266,6 @@ function App() {
             >
               Close
             </button>
-          </div>
-        )}
-
-        {/* Global Scope Selector for Documents and Tags */}
-        {(activeTab === 'documents' || activeTab === 'tags') && (
-          <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-            <div className="flex items-center gap-4">
-              <label className="block text-gray-700 font-semibold whitespace-nowrap">Active Scope:</label>
-              <select
-                value={selectedScopeId || ''}
-                onChange={(e) => handleSelectScope(e.target.value)}
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">-- No scope selected --</option>
-                {scopesHook.scopes?.scopes.map((scope) => (
-                  <option key={scope.id} value={scope.id}>
-                    {scope.name}
-                  </option>
-                ))}
-              </select>
-              {selectedScopeId && (
-                <button
-                  onClick={() => setSelectedScopeId(null)}
-                  className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-all"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
           </div>
         )}
 

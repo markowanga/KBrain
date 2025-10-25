@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, cast
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -244,7 +244,7 @@ async def get_document(
 async def upload_document(
     scope_id: UUID,
     file: UploadFile = File(...),
-    tag_ids: Optional[str] = None,  # Comma-separated tag IDs
+    tag_ids: Optional[str] = Form(None),  # Comma-separated tag IDs from form data
     db: AsyncSession = Depends(get_db),
     storage: BaseFileStorage = Depends(get_storage),
 ) -> DocumentUploadResponse:
