@@ -25,6 +25,7 @@ from kbrain_backend.api.schemas import (
 )
 from kbrain_backend.core.models.scope import Scope
 from kbrain_backend.core.models.document import Document
+from kbrain_backend.core.models.tag import Tag
 from kbrain_backend.database.connection import get_db
 from kbrain_backend.config.settings import settings
 from kbrain_backend.utils.logger import logger
@@ -179,10 +180,11 @@ async def get_document(
 async def upload_document(
     scope_id: UUID,
     file: UploadFile = File(...),
+    tag_ids: Optional[str] = None,  # Comma-separated tag IDs
     db: AsyncSession = Depends(get_db),
     storage: BaseFileStorage = Depends(get_storage),
 ) -> DocumentUploadResponse:
-    """Upload a new document to a scope."""
+    """Upload a new document to a scope with optional tags."""
     # Verify scope exists
     scope_query = select(Scope).where(Scope.id == scope_id)
     scope = await db.scalar(scope_query)
@@ -287,6 +289,60 @@ async def upload_document(
     )
 
     db.add(document)
+
+    # Parse and validate tag_ids if provided
+    if tag_ids:
+        tag_id_list = []
+        try:
+            # Parse comma-separated UUIDs
+            tag_id_list = [UUID(tid.strip()) for tid in tag_ids.split(',') if tid.strip()]
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": "Invalid tag ID format",
+                    }
+                },
+            )
+
+        if tag_id_list:
+            # Fetch tags and validate they belong to the same scope
+            tags_query = select(Tag).where(Tag.id.in_(tag_id_list))
+            tags_result = await db.execute(tags_query)
+            tags = tags_result.scalars().all()
+
+            # Check all tags exist
+            if len(tags) != len(tag_id_list):
+                found_ids = {tag.id for tag in tags}
+                missing_ids = set(tag_id_list) - found_ids
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail={
+                        "error": {
+                            "code": "NOT_FOUND",
+                            "message": f"Tags not found: {', '.join(str(tid) for tid in missing_ids)}",
+                        }
+                    },
+                )
+
+            # Check all tags belong to the same scope
+            invalid_tags = [tag for tag in tags if tag.scope_id != scope_id]
+            if invalid_tags:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "error": {
+                            "code": "VALIDATION_ERROR",
+                            "message": f"Tags do not belong to the specified scope",
+                        }
+                    },
+                )
+
+            # Assign tags to document
+            document.tags = list(tags)
+
     await db.commit()
     await db.refresh(document, attribute_names=["tags"])
 

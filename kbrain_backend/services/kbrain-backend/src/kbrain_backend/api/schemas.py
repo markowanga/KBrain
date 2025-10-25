@@ -284,14 +284,6 @@ class BatchUploadResponse(BaseModel):
     summary: Dict[str, int]
 
 
-class DocumentTagsUpdate(BaseModel):
-    """Schema for updating document tags."""
-
-    tag_ids: List[UUID] = Field(
-        ..., description="List of tag IDs to assign to document"
-    )
-
-
 # ============================================================================
 # Statistics Schemas
 # ============================================================================
@@ -302,7 +294,7 @@ class GlobalStatistics(BaseModel):
 
     total_scopes: int
     total_documents: int
-    total_storage_size: int
+    total_size: int  # Changed from total_storage_size for consistency
     documents_by_status: Dict[str, int]
     documents_by_extension: Dict[str, int]
     storage_backends: Dict[str, int]

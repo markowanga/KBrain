@@ -28,7 +28,7 @@ async def get_global_statistics(
     total_documents = await db.scalar(select(func.count()).select_from(Document))
 
     # Total storage size
-    total_storage_size = await db.scalar(select(func.sum(Document.file_size))) or 0
+    total_size = await db.scalar(select(func.sum(Document.file_size))) or 0
 
     # Documents by status
     documents_by_status = {}
@@ -71,7 +71,7 @@ async def get_global_statistics(
     return GlobalStatistics(
         total_scopes=total_scopes or 0,
         total_documents=total_documents or 0,
-        total_storage_size=int(total_storage_size),
+        total_size=int(total_size),
         documents_by_status=documents_by_status,
         documents_by_extension=documents_by_extension,
         storage_backends=storage_backends,

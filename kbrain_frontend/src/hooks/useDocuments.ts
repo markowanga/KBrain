@@ -31,7 +31,7 @@ interface UseDocumentsReturn extends UseDocumentsState {
 
   // Single document operations
   fetchDocument: (documentId: string) => Promise<void>
-  uploadDocument: (scopeId: string, file: File) => Promise<DocumentUploadResponse | null>
+  uploadDocument: (scopeId: string, file: File, tagIds?: string[]) => Promise<DocumentUploadResponse | null>
   deleteDocument: (documentId: string, deleteStorage?: boolean) => Promise<boolean>
   updateDocumentStatus: (documentId: string, data: DocumentStatusUpdate) => Promise<boolean>
   updateDocumentMetadata: (documentId: string, metadata: Record<string, any>) => Promise<boolean>
@@ -94,11 +94,12 @@ export function useDocuments(): UseDocumentsReturn {
   // Upload document
   const uploadDocument = useCallback(async (
     scopeId: string,
-    file: File
+    file: File,
+    tagIds?: string[]
   ): Promise<DocumentUploadResponse | null> => {
     try {
       updateState({ loading: true, error: null, uploadProgress: 0 })
-      const document = await documentsApi.upload(scopeId, file)
+      const document = await documentsApi.upload(scopeId, file, tagIds)
       updateState({ loading: false, uploadProgress: null })
 
       // Refresh documents list

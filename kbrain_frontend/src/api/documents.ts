@@ -34,10 +34,18 @@ export const documentsApi = {
 
   /**
    * Upload a document to a scope
+   * @param scopeId - The scope ID
+   * @param file - The file to upload
+   * @param tagIds - Optional array of tag IDs to assign to the document
    */
-  async upload(scopeId: string, file: File): Promise<DocumentUploadResponse> {
+  async upload(scopeId: string, file: File, tagIds?: string[]): Promise<DocumentUploadResponse> {
     const formData = new FormData()
     formData.append('file', file)
+
+    // Add tag_ids as comma-separated string if provided
+    if (tagIds && tagIds.length > 0) {
+      formData.append('tag_ids', tagIds.join(','))
+    }
 
     return apiClient.postFormData<DocumentUploadResponse>(
       `/v1/scopes/${scopeId}/documents`,
@@ -94,15 +102,6 @@ export const documentsApi = {
     }
 
     return response.blob()
-  },
-
-  /**
-   * Update tags on a document
-   */
-  async updateTags(documentId: string, tagIds: string[]): Promise<DocumentResponse> {
-    return apiClient.put<DocumentResponse>(`/v1/documents/${documentId}/tags`, {
-      tag_ids: tagIds,
-    })
   },
 }
 

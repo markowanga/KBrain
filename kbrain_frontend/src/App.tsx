@@ -52,13 +52,24 @@ function App() {
     }
   }
 
-  const handleUploadDocument = async (scopeId: string, file: File) => {
-    const doc = await documentsHook.uploadDocument(scopeId, file)
+  const handleUploadDocument = async (scopeId: string, file: File, tagIds?: string[]) => {
+    const doc = await documentsHook.uploadDocument(scopeId, file, tagIds)
+    if (doc) {
+      // Refresh scopes and statistics after upload
+      scopesHook.fetchScopes()
+      statisticsHook.fetchGlobalStatistics()
+    }
     return doc !== null
   }
 
   const handleDeleteDocument = async (documentId: string) => {
-    return await documentsHook.deleteDocument(documentId)
+    const success = await documentsHook.deleteDocument(documentId)
+    if (success) {
+      // Refresh scopes and statistics after delete
+      scopesHook.fetchScopes()
+      statisticsHook.fetchGlobalStatistics()
+    }
+    return success
   }
 
   const handleSelectScope = (scopeId: string) => {
@@ -87,11 +98,10 @@ function App() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
       <header className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
             KBrain
           </h1>
-          <p className="text-gray-600 mt-1">System zarządzania dokumentami</p>
         </div>
       </header>
 
@@ -117,7 +127,7 @@ function App() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Scope'y
+              Scopes
             </button>
             <button
               onClick={() => setActiveTab('documents')}
@@ -127,7 +137,7 @@ function App() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Dokumenty
+              Documents
             </button>
             <button
               onClick={() => setActiveTab('tags')}
@@ -137,7 +147,7 @@ function App() {
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              Tagi
+              Tags
             </button>
           </div>
         </div>
@@ -157,7 +167,7 @@ function App() {
               }}
               className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
             >
-              Zamknij
+              Close
             </button>
           </div>
         )}
@@ -187,19 +197,6 @@ function App() {
             onSelectScope={handleSelectScope}
             onUploadDocument={handleUploadDocument}
             onDeleteDocument={handleDeleteDocument}
-            onUpdateDocumentTags={async (documentId: string, tagIds: string[]) => {
-              try {
-                await documentsApi.updateTags(documentId, tagIds)
-                // Refresh documents after updating tags
-                if (selectedScopeId) {
-                  await documentsHook.fetchDocuments(selectedScopeId)
-                }
-                return true
-              } catch (error) {
-                console.error('Failed to update document tags:', error)
-                return false
-              }
-            }}
           />
         )}
         {!loading && activeTab === 'tags' && (
@@ -223,7 +220,7 @@ function Dashboard({ statistics }: { statistics: GlobalStatistics | null }) {
   if (!statistics) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 text-lg">Ładowanie statystyk...</p>
+        <p className="text-gray-500 text-lg">Loading statistics...</p>
       </div>
     )
   }
@@ -233,17 +230,17 @@ function Dashboard({ statistics }: { statistics: GlobalStatistics | null }) {
       <h2 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatCard
-          title="Wszystkie Scope'y"
+          title="All Scopes"
           value={statistics.total_scopes || 0}
           color="blue"
         />
         <StatCard
-          title="Wszystkie Dokumenty"
+          title="All Documents"
           value={statistics.total_documents || 0}
           color="indigo"
         />
         <StatCard
-          title="Łączny Rozmiar"
+          title="Total Size"
           value={formatBytes(statistics.total_size || 0)}
           color="purple"
         />
@@ -251,7 +248,7 @@ function Dashboard({ statistics }: { statistics: GlobalStatistics | null }) {
 
       {statistics.documents_by_status && (
         <div className="mt-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Status Dokumentów</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Document Status</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(statistics.documents_by_status).map(([status, count]) => (
               <div key={status} className="bg-white rounded-lg shadow-md p-4">
@@ -265,7 +262,7 @@ function Dashboard({ statistics }: { statistics: GlobalStatistics | null }) {
 
       {statistics.documents_by_extension && Object.keys(statistics.documents_by_extension).length > 0 && (
         <div className="mt-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Dokumenty według rozszerzenia</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Documents by Extension</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(statistics.documents_by_extension).map(([ext, count]) => (
               <div key={ext} className="bg-white rounded-lg shadow-md p-4">
@@ -327,37 +324,37 @@ function Scopes({ scopes, onCreateScope, onDeleteScope }: ScopesProps) {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">Zarządzanie Scope'ami</h2>
+        <h2 className="text-3xl font-bold text-gray-800">Scope Management</h2>
         <button
           onClick={() => setShowForm(!showForm)}
           className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
         >
-          {showForm ? 'Anuluj' : '+ Nowy Scope'}
+          {showForm ? 'Cancel' : '+ New Scope'}
         </button>
       </div>
 
       {showForm && (
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Utwórz Nowy Scope</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Create New Scope</h3>
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label className="block text-gray-700 font-semibold mb-2">Nazwa</label>
+              <label className="block text-gray-700 font-semibold mb-2">Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="np. Dokumenty Projektowe"
+                placeholder="e.g. Project Documents"
                 required
               />
             </div>
             <div className="mb-4">
-              <label className="block text-gray-700 font-semibold mb-2">Opis</label>
+              <label className="block text-gray-700 font-semibold mb-2">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Opis scope'a"
+                placeholder="Scope description"
                 rows={3}
               />
             </div>
@@ -365,7 +362,7 @@ function Scopes({ scopes, onCreateScope, onDeleteScope }: ScopesProps) {
               type="submit"
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold shadow-md hover:shadow-lg transition-all duration-200"
             >
-              Utwórz Scope
+              Create Scope
             </button>
           </form>
         </div>
@@ -425,9 +422,8 @@ interface DocumentsProps {
   tags: Tag[]
   selectedScope: string | null
   onSelectScope: (scopeId: string) => void
-  onUploadDocument: (scopeId: string, file: File) => Promise<boolean>
+  onUploadDocument: (scopeId: string, file: File, tagIds?: string[]) => Promise<boolean>
   onDeleteDocument: (documentId: string) => Promise<boolean>
-  onUpdateDocumentTags: (documentId: string, tagIds: string[]) => Promise<boolean>
 }
 
 function Documents({
@@ -438,39 +434,20 @@ function Documents({
   onSelectScope,
   onUploadDocument,
   onDeleteDocument,
-  onUpdateDocumentTags,
 }: DocumentsProps) {
   const [file, setFile] = useState<File | null>(null)
-  const [editingDocumentId, setEditingDocumentId] = useState<string | null>(null)
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
 
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     if (file && selectedScope) {
-      const success = await onUploadDocument(selectedScope, file)
+      const success = await onUploadDocument(selectedScope, file, selectedTagIds)
       if (success) {
         setFile(null)
+        setSelectedTagIds([])
         ;(e.target as HTMLFormElement).reset()
       }
     }
-  }
-
-  const handleEditTags = (documentId: string, currentTags: Tag[] = []) => {
-    setEditingDocumentId(documentId)
-    setSelectedTagIds(currentTags.map(t => t.id))
-  }
-
-  const handleSaveTags = async (documentId: string) => {
-    const success = await onUpdateDocumentTags(documentId, selectedTagIds)
-    if (success) {
-      setEditingDocumentId(null)
-      setSelectedTagIds([])
-    }
-  }
-
-  const handleCancelEditTags = () => {
-    setEditingDocumentId(null)
-    setSelectedTagIds([])
   }
 
   const toggleTagSelection = (tagId: string) => {
@@ -515,6 +492,34 @@ function Documents({
                 required
               />
             </div>
+
+            {/* Tag Selection */}
+            {tags.length > 0 && (
+              <div className="mb-4">
+                <label className="block text-gray-700 font-semibold mb-2">Wybierz Tagi (opcjonalnie)</label>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => toggleTagSelection(tag.id)}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold border-2 transition-all ${
+                        selectedTagIds.includes(tag.id)
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300'
+                      }`}
+                      style={{
+                        backgroundColor: selectedTagIds.includes(tag.id) ? tag.color : undefined,
+                        borderColor: selectedTagIds.includes(tag.id) ? tag.color : undefined
+                      }}
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={!file}
@@ -546,72 +551,24 @@ function Documents({
                     </span>
                   </div>
 
-                  {/* Tags Display */}
+                  {/* Tags Display (Read-Only) */}
                   <div className="mt-3">
-                    {editingDocumentId === doc.id ? (
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap gap-2">
-                          {tags.length > 0 ? (
-                            tags.map((tag) => (
-                              <button
-                                key={tag.id}
-                                onClick={() => toggleTagSelection(tag.id)}
-                                className={`px-3 py-1 rounded-full text-sm font-semibold border-2 transition-all ${
-                                  selectedTagIds.includes(tag.id)
-                                    ? 'text-white'
-                                    : 'bg-white text-gray-700'
-                                }`}
-                                style={{
-                                  backgroundColor: selectedTagIds.includes(tag.id) ? tag.color || '#3B82F6' : 'white',
-                                  borderColor: tag.color || '#3B82F6',
-                                }}
-                              >
-                                {selectedTagIds.includes(tag.id) ? '✓ ' : ''}{tag.name}
-                              </button>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500">Brak tagów w tym scope. Utwórz tagi w zakładce Tagi.</p>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleSaveTags(doc.id)}
-                            className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-semibold hover:shadow-md transition-all"
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="text-sm text-gray-600 font-semibold">Tagi:</span>
+                      {doc.tags && doc.tags.length > 0 ? (
+                        doc.tags.map((tag) => (
+                          <span
+                            key={tag.id}
+                            className="px-3 py-1 rounded-full text-sm font-semibold text-white"
+                            style={{ backgroundColor: tag.color || '#3B82F6' }}
                           >
-                            Zapisz
-                          </button>
-                          <button
-                            onClick={handleCancelEditTags}
-                            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg text-sm font-semibold hover:shadow-md transition-all"
-                          >
-                            Anuluj
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <span className="text-sm text-gray-600 font-semibold">Tagi:</span>
-                        {doc.tags && doc.tags.length > 0 ? (
-                          doc.tags.map((tag) => (
-                            <span
-                              key={tag.id}
-                              className="px-3 py-1 rounded-full text-sm font-semibold text-white"
-                              style={{ backgroundColor: tag.color || '#3B82F6' }}
-                            >
-                              {tag.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-sm text-gray-400 italic">Brak tagów</span>
-                        )}
-                        <button
-                          onClick={() => handleEditTags(doc.id, doc.tags)}
-                          className="ml-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-200 transition-all"
-                        >
-                          Edytuj tagi
-                        </button>
-                      </div>
-                    )}
+                            {tag.name}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">Brak tagów</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
