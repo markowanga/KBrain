@@ -14,7 +14,7 @@ logger.add(
     level=settings.log_level.upper(),
     colorize=True,
     backtrace=True,  # Enable full backtrace on exceptions
-    diagnose=True,   # Enable variable values in traceback (disable in production)
+    diagnose=True,  # Enable variable values in traceback (disable in production)
 )
 
 # Export logger for use in other modules

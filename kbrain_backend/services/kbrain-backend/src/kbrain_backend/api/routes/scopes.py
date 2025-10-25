@@ -1,11 +1,12 @@
 """Scope API routes."""
 
-from typing import Optional, cast
+from typing import cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from kbrain_backend.api.schemas import (
     ScopeCreate,
@@ -19,6 +20,11 @@ from kbrain_backend.api.schemas import (
 from kbrain_backend.core.models.scope import Scope
 from kbrain_backend.core.models.document import Document
 from kbrain_backend.database.connection import get_db
+from kbrain_backend.utils.logger import logger
+from kbrain_storage import BaseFileStorage
+
+# Import get_storage from documents module (shared storage instance)
+from kbrain_backend.api.routes.documents import get_storage
 
 router = APIRouter(prefix="/scopes", tags=["scopes"])
 
@@ -83,7 +89,9 @@ async def list_scopes(
 
     # Pagination metadata
     total_items_count = total_items or 0
-    total_pages = (total_items_count + per_page - 1) // per_page if total_items_count else 0
+    total_pages = (
+        (total_items_count + per_page - 1) // per_page if total_items_count else 0
+    )
     pagination = PaginationResponse(
         page=page,
         per_page=per_page,
@@ -241,6 +249,40 @@ async def update_scope(
         scope.description = scope_data.description
 
     if scope_data.allowed_extensions is not None:
+        # Check if any extensions are being removed
+        current_extensions = set(scope.allowed_extensions)
+        new_extensions = set(scope_data.allowed_extensions)
+        removed_extensions = current_extensions - new_extensions
+
+        if removed_extensions:
+            # Check if any documents use these extensions
+            for ext in removed_extensions:
+                doc_count_query = (
+                    select(func.count())
+                    .select_from(Document)
+                    .where(
+                        Document.scope_id == scope_id, Document.file_extension == ext
+                    )
+                )
+                count = await db.scalar(doc_count_query)
+
+                if count and count > 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail={
+                            "error": {
+                                "code": "EXTENSION_IN_USE",
+                                "message": f"Cannot remove extension '.{ext}' - {count} document(s) still use it",
+                                "details": [
+                                    {
+                                        "field": "allowed_extensions",
+                                        "message": f"Extension '.{ext}' is used by {count} document(s) in this scope",
+                                    }
+                                ],
+                            }
+                        },
+                    )
+
         scope.allowed_extensions = scope_data.allowed_extensions
 
     await db.commit()
@@ -262,9 +304,13 @@ async def update_scope(
 async def delete_scope(
     scope_id: UUID,
     db: AsyncSession = Depends(get_db),
+    storage: BaseFileStorage = Depends(get_storage),
 ) -> None:
-    """Delete a scope permanently from database."""
-    query = select(Scope).where(Scope.id == scope_id)
+    """Delete a scope permanently from database and storage."""
+    # Load scope with documents to delete files from storage
+    query = (
+        select(Scope).options(selectinload(Scope.documents)).where(Scope.id == scope_id)
+    )
     result = await db.execute(query)
     scope = result.scalar_one_or_none()
 
@@ -274,7 +320,16 @@ async def delete_scope(
             detail={"error": {"code": "NOT_FOUND", "message": "Scope not found"}},
         )
 
-    # Delete scope (cascade will delete related documents and tags)
+    # Delete all document files from storage
+    for document in scope.documents:
+        try:
+            await storage.delete_file(document.storage_path)
+            logger.info(f"Deleted file from storage: {document.storage_path}")
+        except Exception as e:
+            # Log error but continue with deletion
+            logger.warning(f"Failed to delete file {document.storage_path}: {e}")
+
+    # Delete scope (cascade will delete related documents and tags from database)
     await db.delete(scope)
     await db.commit()
     return None

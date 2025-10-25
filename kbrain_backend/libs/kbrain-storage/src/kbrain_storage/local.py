@@ -5,7 +5,7 @@ Uses pathlib for cross-platform file operations.
 
 import asyncio
 from pathlib import Path
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union
 import aiofiles
 import aiofiles.os
 

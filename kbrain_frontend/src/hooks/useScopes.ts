@@ -32,7 +32,7 @@ interface UseScopesReturn extends UseScopesState {
   fetchScope: (scopeId: string) => Promise<void>
   createScope: (data: ScopeCreate) => Promise<ScopeResponse | null>
   updateScope: (scopeId: string, data: ScopeUpdate) => Promise<ScopeResponse | null>
-  deleteScope: (scopeId: string, hardDelete?: boolean) => Promise<boolean>
+  deleteScope: (scopeId: string) => Promise<boolean>
 
   // State management
   clearError: () => void
@@ -129,12 +129,11 @@ export function useScopes(): UseScopesReturn {
 
   // Delete scope
   const deleteScope = useCallback(async (
-    scopeId: string,
-    hardDelete = false
+    scopeId: string
   ): Promise<boolean> => {
     try {
       updateState({ loading: true, error: null })
-      await scopesApi.delete(scopeId, hardDelete)
+      await scopesApi.delete(scopeId)
       updateState({ loading: false })
 
       // Refresh scopes list

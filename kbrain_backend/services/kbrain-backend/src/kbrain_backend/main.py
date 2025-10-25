@@ -4,10 +4,9 @@ import os
 from contextlib import asynccontextmanager
 from typing import Optional, AsyncIterator, Any, Dict
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Response, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from kbrain_backend.config.settings import settings
@@ -101,7 +100,9 @@ app.add_exception_handler(Exception, general_exception_handler)
 
 # Register routers with /api prefix (required by nginx routing)
 app.include_router(scopes.router, prefix="/api/v1")
-app.include_router(documents.router, prefix="/api")  # Documents have full paths with /api/v1
+app.include_router(
+    documents.router, prefix="/api"
+)  # Documents have full paths with /api/v1
 app.include_router(tags.router, prefix="/api/v1")  # Tags routes
 app.include_router(tags.documents_router, prefix="/api")  # Document tags routes
 app.include_router(statistics.router, prefix="/api/v1")
@@ -133,7 +134,9 @@ async def legacy_health() -> Dict[str, str]:
 
 # Legacy file storage endpoints (for backward compatibility)
 @app.post("/api/files/upload")
-async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] = None) -> Dict[str, Any]:
+async def legacy_upload_file(
+    file: UploadFile = File(...), path: Optional[str] = None
+) -> Dict[str, Any]:
     """
     Legacy file upload endpoint (for backward compatibility).
     Use /v1/scopes/{scope_id}/documents for new implementations.
@@ -142,7 +145,9 @@ async def legacy_upload_file(file: UploadFile = File(...), path: Optional[str] =
         # Use provided path or original filename
         file_path = path if path else file.filename
         if not file_path:
-            raise HTTPException(status_code=400, detail="No file path or filename provided")
+            raise HTTPException(
+                status_code=400, detail="No file path or filename provided"
+            )
 
         # Read file content
         content = await file.read()

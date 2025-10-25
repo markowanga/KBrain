@@ -44,7 +44,9 @@ class ValidationError(APIError):
     """Validation error."""
 
     def __init__(
-        self, message: str = "Validation failed", details: Optional[List[Dict[str, Any]]] = None
+        self,
+        message: str = "Validation failed",
+        details: Optional[List[Dict[str, Any]]] = None,
     ):
         super().__init__(
             code="VALIDATION_ERROR",
@@ -155,9 +157,7 @@ async def database_error_handler(
 ) -> JSONResponse:
     """Handle database errors."""
     # Log the full exception with traceback
-    logger.exception(
-        f"Database error in {request.method} {request.url.path}: {exc}"
-    )
+    logger.exception(f"Database error in {request.method} {request.url.path}: {exc}")
 
     error_response: Dict[str, Any] = {
         "error": {

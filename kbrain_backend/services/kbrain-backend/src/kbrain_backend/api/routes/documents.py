@@ -4,7 +4,7 @@ import hashlib
 import mimetypes
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Any, cast
+from typing import Optional, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
@@ -22,6 +22,7 @@ from kbrain_backend.api.schemas import (
     DocumentMetadataUpdate,
     DownloadUrlResponse,
     PaginationResponse,
+    TagResponse,
 )
 from kbrain_backend.core.models.scope import Scope
 from kbrain_backend.core.models.document import Document
@@ -80,7 +81,11 @@ async def list_documents(
         )
 
     # Build query
-    query = select(Document).options(selectinload(Document.tags)).where(Document.scope_id == scope_id)
+    query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(Document.scope_id == scope_id)
+    )
 
     # Apply filters
     if status_filter:
@@ -110,7 +115,9 @@ async def list_documents(
 
     # Pagination metadata
     total_items_count = total_items or 0
-    total_pages = (total_items_count + per_page - 1) // per_page if total_items_count else 0
+    total_pages = (
+        (total_items_count + per_page - 1) // per_page if total_items_count else 0
+    )
     pagination = PaginationResponse(
         page=page,
         per_page=per_page,
@@ -120,7 +127,44 @@ async def list_documents(
         has_prev=page > 1,
     )
 
-    document_responses = [DocumentResponse.model_validate(doc) for doc in documents]
+    # Convert documents to response objects with tags
+    document_responses = []
+    for doc in documents:
+        tag_responses = [
+            TagResponse(
+                id=cast(UUID, tag.id),
+                scope_id=cast(UUID, tag.scope_id),
+                name=tag.name,
+                description=tag.description,
+                color=tag.color,
+                meta=tag.meta,
+                created_at=tag.created_at,
+                updated_at=tag.updated_at,
+            )
+            for tag in doc.tags
+        ]
+
+        doc_response = DocumentResponse(
+            id=cast(UUID, doc.id),
+            scope_id=cast(UUID, doc.scope_id),
+            filename=doc.filename,
+            original_name=doc.original_name,
+            file_size=doc.file_size,
+            mime_type=doc.mime_type,
+            file_extension=doc.file_extension,
+            storage_path=doc.storage_path,
+            storage_backend=doc.storage_backend,
+            status=doc.status,
+            upload_date=doc.upload_date,
+            processing_started=doc.processing_started,
+            processed_at=doc.processed_at,
+            error_message=doc.error_message,
+            metadata=doc.doc_metadata,
+            tags=tag_responses,
+            created_at=doc.created_at,
+            updated_at=doc.updated_at,
+        )
+        document_responses.append(doc_response)
 
     return DocumentListResponse(documents=document_responses, pagination=pagination)
 
@@ -131,7 +175,11 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentDetailResponse:
     """Get details of a specific document."""
-    query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
+    query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(Document.id == document_id)
+    )
     result = await db.execute(query)
     document = result.scalar_one_or_none()
 
@@ -144,6 +192,21 @@ async def get_document(
     # Get scope name
     scope_query = select(Scope).where(Scope.id == document.scope_id)
     scope = await db.scalar(scope_query)
+
+    # Convert tags to TagResponse objects
+    tag_responses = [
+        TagResponse(
+            id=cast(UUID, tag.id),
+            scope_id=cast(UUID, tag.scope_id),
+            name=tag.name,
+            description=tag.description,
+            color=tag.color,
+            meta=tag.meta,
+            created_at=tag.created_at,
+            updated_at=tag.updated_at,
+        )
+        for tag in document.tags
+    ]
 
     response = DocumentDetailResponse(
         id=cast(UUID, document.id),
@@ -165,6 +228,7 @@ async def get_document(
         retry_count=document.retry_count,
         error_message=document.error_message,
         metadata=document.doc_metadata,
+        tags=tag_responses,
         created_at=document.created_at,
         updated_at=document.updated_at,
     )
@@ -192,9 +256,7 @@ async def upload_document(
     if not scope:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "error": {"code": "NOT_FOUND", "message": "Scope not found"}
-            },
+            detail={"error": {"code": "NOT_FOUND", "message": "Scope not found"}},
         )
 
     # Get file extension
@@ -246,6 +308,29 @@ async def upload_document(
     md5_hash = hashlib.md5(content).hexdigest()
     sha256_hash = hashlib.sha256(content).hexdigest()
 
+    # Check for duplicate file in this scope (by SHA256 checksum)
+    duplicate_query = select(Document).where(
+        Document.scope_id == scope_id, Document.checksum_sha256 == sha256_hash
+    )
+    duplicate = await db.scalar(duplicate_query)
+
+    if duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "DUPLICATE_FILE",
+                    "message": f"This file already exists in the scope (duplicate of '{duplicate.original_name}')",
+                    "details": [
+                        {
+                            "field": "file",
+                            "message": f"File with identical content already exists: {duplicate.original_name}",
+                        }
+                    ],
+                }
+            },
+        )
+
     # Get MIME type
     mime_type, _ = mimetypes.guess_type(file.filename or "")
 
@@ -295,7 +380,9 @@ async def upload_document(
         tag_id_list = []
         try:
             # Parse comma-separated UUIDs
-            tag_id_list = [UUID(tid.strip()) for tid in tag_ids.split(',') if tid.strip()]
+            tag_id_list = [
+                UUID(tid.strip()) for tid in tag_ids.split(",") if tid.strip()
+            ]
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -315,7 +402,7 @@ async def upload_document(
 
             # Check all tags exist
             if len(tags) != len(tag_id_list):
-                found_ids = {tag.id for tag in tags}
+                found_ids = {cast(UUID, tag.id) for tag in tags}
                 missing_ids = set(tag_id_list) - found_ids
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
@@ -335,7 +422,7 @@ async def upload_document(
                     detail={
                         "error": {
                             "code": "VALIDATION_ERROR",
-                            "message": f"Tags do not belong to the specified scope",
+                            "message": "Tags do not belong to the specified scope",
                         }
                     },
                 )
@@ -345,6 +432,21 @@ async def upload_document(
 
     await db.commit()
     await db.refresh(document, attribute_names=["tags"])
+
+    # Convert tags to TagResponse objects
+    tag_responses = [
+        TagResponse(
+            id=cast(UUID, tag.id),
+            scope_id=cast(UUID, tag.scope_id),
+            name=tag.name,
+            description=tag.description,
+            color=tag.color,
+            meta=tag.meta,
+            created_at=tag.created_at,
+            updated_at=tag.updated_at,
+        )
+        for tag in document.tags
+    ]
 
     return DocumentUploadResponse(
         id=cast(UUID, document.id),
@@ -358,7 +460,7 @@ async def upload_document(
         status=document.status,
         upload_date=document.upload_date,
         metadata=document.doc_metadata,
-        tags=[],
+        tags=tag_responses,
         created_at=document.created_at,
         updated_at=document.updated_at,
     )
@@ -488,7 +590,11 @@ async def update_document_status(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentResponse:
     """Update document status."""
-    query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
+    query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(Document.id == document_id)
+    )
     result = await db.execute(query)
     document = result.scalar_one_or_none()
 
@@ -528,7 +634,11 @@ async def update_document_metadata(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentResponse:
     """Update document metadata."""
-    query = select(Document).options(selectinload(Document.tags)).where(Document.id == document_id)
+    query = (
+        select(Document)
+        .options(selectinload(Document.tags))
+        .where(Document.id == document_id)
+    )
     result = await db.execute(query)
     document = result.scalar_one_or_none()
 

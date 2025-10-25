@@ -59,9 +59,7 @@ async def create_tag(
     if not scope:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "error": {"code": "NOT_FOUND", "message": "Scope not found"}
-            },
+            detail={"error": {"code": "NOT_FOUND", "message": "Scope not found"}},
         )
 
     # Check if tag with same name exists in this scope
