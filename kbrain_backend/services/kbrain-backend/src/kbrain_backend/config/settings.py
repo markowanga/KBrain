@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     database_pool_max: int = 10
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:5174", "http://localhost:3000"]
 
     # Storage
     storage_backend: str = "local"  # "local", "s3", "azure"
@@ -45,6 +45,16 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = "INFO"
+
+    # Document Processing Orchestrator
+    processing_enabled: bool = True
+    processing_max_retries: int = 3
+    processing_api_token: Optional[str] = None
+
+    # RabbitMQ
+    rabbitmq_url: str = "amqp://guest:guest@localhost/"
+    rabbitmq_queue_name: str = "document_processing"
+    rabbitmq_prefetch_count: int = 10
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False

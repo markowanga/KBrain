@@ -2,17 +2,25 @@
 
 import os
 from contextlib import asynccontextmanager
-from typing import Optional, AsyncIterator, Any, Dict
+from typing import AsyncIterator
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, Response
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import SQLAlchemyError
 
 from kbrain_backend.config.settings import settings
 from kbrain_backend.database.connection import init_db, close_db
-from kbrain_backend.api.routes import scopes, documents, statistics, health, tags
+from kbrain_backend.api.routes import (
+    scopes,
+    documents,
+    statistics,
+    health,
+    tags,
+    processing,
+)
 from kbrain_backend.api.routes.documents import set_storage
+from kbrain_backend.api.routes.processing import set_orchestrator_worker_publisher
 from kbrain_backend.utils.errors import (
     APIError,
     api_error_handler,
@@ -21,9 +29,15 @@ from kbrain_backend.utils.errors import (
     database_error_handler,
 )
 from kbrain_backend.utils.logger import logger
+from kbrain_processor_orchestrator.base import ExampleProcessor
+from kbrain_processor_orchestrator.orchestrator import ProcessingOrchestrator
+from kbrain_processor_orchestrator.publisher import QueuePublisher
+from kbrain_processor_orchestrator.worker import ProcessingWorker
 
 # Storage backend initialization
 from kbrain_storage import BaseFileStorage, LocalFileStorage
+
+# Processing orchestrator
 
 # Storage configuration
 STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", settings.storage_backend)
@@ -64,10 +78,72 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Set storage for document routes
     set_storage(storage)
 
+    # Initialize processing orchestrator, worker and publisher
+    orchestrator = None
+    worker = None
+    publisher = None
+
+    if settings.processing_enabled:
+        try:
+            logger.info("Initializing document processing orchestrator...")
+
+            # Create orchestrator
+            orchestrator = ProcessingOrchestrator(
+                max_retries=settings.processing_max_retries
+            )
+
+            # Register example processor (you can register custom processors here)
+            example_processor = ExampleProcessor()
+            orchestrator.register_processor(example_processor)
+
+            # Create publisher
+            publisher = QueuePublisher(
+                rabbitmq_url=settings.rabbitmq_url,
+                queue_name=settings.rabbitmq_queue_name,
+            )
+            await publisher.connect()
+            logger.info("RabbitMQ publisher connected")
+
+            # Create worker
+            api_base_url = f"http://{settings.host}:{settings.port}/api"
+            worker = ProcessingWorker(
+                orchestrator=orchestrator,
+                rabbitmq_url=settings.rabbitmq_url,
+                queue_name=settings.rabbitmq_queue_name,
+                api_base_url=api_base_url,
+                prefetch_count=settings.rabbitmq_prefetch_count,
+                api_token=settings.processing_api_token,
+            )
+
+            # Set orchestrator, worker and publisher for routes
+            set_orchestrator_worker_publisher(orchestrator, worker, publisher)
+
+            # Start worker
+            await worker.start()
+            logger.info("RabbitMQ consumer worker started successfully")
+
+        except Exception as e:
+            logger.exception(f"Failed to initialize processing: {e}")
+            # Don't fail app startup if processing fails
+            logger.warning("Continuing without document processing enabled")
+
     yield
 
     # Shutdown
     logger.info("Shutting down KBrain API...")
+
+    # Stop processing worker
+    if worker and worker.is_running:
+        logger.info("Stopping RabbitMQ consumer worker...")
+        await worker.stop()
+        logger.info("RabbitMQ consumer worker stopped")
+
+    # Disconnect publisher
+    if publisher:
+        logger.info("Disconnecting RabbitMQ publisher...")
+        await publisher.disconnect()
+        logger.info("RabbitMQ publisher disconnected")
+
     await close_db()
     logger.info("Database connections closed")
 
@@ -86,7 +162,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,7 +183,7 @@ app.include_router(tags.router, prefix="/api/v1")  # Tags routes
 app.include_router(tags.documents_router, prefix="/api")  # Document tags routes
 app.include_router(statistics.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api")  # Health endpoints under /api
-
+app.include_router(processing.router, prefix="/api")  # Processing endpoints
 
 # if __name__ == "__main__":
 #     uvicorn.run(

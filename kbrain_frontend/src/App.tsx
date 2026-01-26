@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useScopes, useDocuments, useStatistics, useTags } from './hooks'
-import { documentsApi } from './api'
 import type { GlobalStatistics, Tag, TagCreate } from './api/types'
 import { formatBytes, getStatusColor } from './utils/format'
 
@@ -105,7 +104,10 @@ function App() {
   const handleDeleteDocument = async (documentId: string) => {
     const success = await documentsHook.deleteDocument(documentId)
     if (success) {
-      // Refresh scopes and statistics after delete
+      // Refresh documents list, scopes and statistics after delete
+      if (selectedScopeId) {
+        documentsHook.fetchDocuments(selectedScopeId)
+      }
       scopesHook.fetchScopes()
       statisticsHook.fetchGlobalStatistics()
     }

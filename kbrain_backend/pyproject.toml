@@ -17,6 +17,9 @@ dependencies = [
     "python-dateutil>=2.8.2",
     "loguru>=0.7.0",
     "greenlet>=3.2.4",
+    "httpx>=0.27.0",
+    "kbrain-storage",
+    "kbrain-processor-orchestrator",
 ]
 
 [dependency-groups]
@@ -64,3 +67,7 @@ members = [
     "services/kbrain_backend",
     "libs/kbrain-processor-orchestrator",
 ]
+
+[tool.uv.sources]
+kbrain-storage = { workspace = true }
+kbrain-processor-orchestrator = { workspace = true }
