@@ -32,9 +32,25 @@ services:
       - STORAGE_BACKEND=local
       - STORAGE_ROOT=storage_data
       - CORS_ORIGINS=["http://localhost:80", "http://localhost"]
+      # RabbitMQ
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672/
+      # OpenAI (for document/image processing)
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1/chat/completions}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.2-2025-12-11}
+      # XLSX Medication Processor
+      - XLSX_MEDICATION_SERVICE_URL=${XLSX_MEDICATION_SERVICE_URL:-}
+      # RAGFlow
+      - RAGFLOW_URL=${RAGFLOW_URL:-}
+      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
+      - RAGFLOW_DATASET_ID=${RAGFLOW_DATASET_ID:-}
+      - RAGFLOW_WAIT_FOR_PARSING=${RAGFLOW_WAIT_FOR_PARSING:-true}
+      - RAGFLOW_MAX_WAIT=${RAGFLOW_MAX_WAIT:-3000.0}
     depends_on:
       postgres:
         condition: service_healthy
+      rabbitmq:
+        condition: service_started
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

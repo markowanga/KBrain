@@ -29,10 +29,15 @@ from kbrain_backend.utils.errors import (
     database_error_handler,
 )
 from kbrain_backend.utils.logger import logger
-from kbrain_processor_orchestrator.base import ExampleProcessor
 from kbrain_processor_orchestrator.orchestrator import ProcessingOrchestrator
 from kbrain_processor_orchestrator.publisher import QueuePublisher
 from kbrain_processor_orchestrator.worker import ProcessingWorker
+from kbrain_processor_orchestrator.processors import (
+    DocumentProcessor,
+    ImageProcessor,
+    TextProcessor,
+    XlsxMedicationProcessor,
+)
 
 # Storage backend initialization
 from kbrain_storage import BaseFileStorage, LocalFileStorage
@@ -92,9 +97,45 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 max_retries=settings.processing_max_retries
             )
 
-            # Register example processor (you can register custom processors here)
-            example_processor = ExampleProcessor()
-            orchestrator.register_processor(example_processor)
+            # Register document processors with settings
+            orchestrator.register_processor(
+                DocumentProcessor(
+                    openai_api_key=settings.openai_api_key,
+                    openai_base_url=settings.openai_base_url,
+                    model=settings.openai_model,
+                    ragflow_url=settings.ragflow_url,
+                    ragflow_api_key=settings.ragflow_api_key,
+                    ragflow_dataset_id=settings.ragflow_dataset_id,
+                    ragflow_wait_for_parsing=settings.ragflow_wait_for_parsing,
+                    ragflow_max_wait=settings.ragflow_max_wait,
+                )
+            )
+            orchestrator.register_processor(
+                ImageProcessor(
+                    openai_api_key=settings.openai_api_key,
+                    openai_base_url=settings.openai_base_url,
+                    model=settings.openai_model,
+                    ragflow_url=settings.ragflow_url,
+                    ragflow_api_key=settings.ragflow_api_key,
+                    ragflow_dataset_id=settings.ragflow_dataset_id,
+                    ragflow_wait_for_parsing=settings.ragflow_wait_for_parsing,
+                    ragflow_max_wait=settings.ragflow_max_wait,
+                )
+            )
+            orchestrator.register_processor(
+                TextProcessor(
+                    ragflow_url=settings.ragflow_url,
+                    ragflow_api_key=settings.ragflow_api_key,
+                    ragflow_dataset_id=settings.ragflow_dataset_id,
+                    ragflow_wait_for_parsing=settings.ragflow_wait_for_parsing,
+                    ragflow_max_wait=settings.ragflow_max_wait,
+                )
+            )
+            orchestrator.register_processor(
+                XlsxMedicationProcessor(
+                    service_url=settings.xlsx_medication_service_url,
+                )
+            )
 
             # Create publisher
             publisher = QueuePublisher(

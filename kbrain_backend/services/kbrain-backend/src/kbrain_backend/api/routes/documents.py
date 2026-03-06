@@ -39,6 +39,7 @@ from kbrain_backend.core.models.tag import Tag
 from kbrain_backend.database.connection import get_db
 from kbrain_backend.config.settings import settings
 from kbrain_backend.utils.logger import logger
+from kbrain_backend.api.routes.processing import get_publisher
 
 # We'll use the storage from main.py, for now we'll import it
 # In a real implementation, this should be dependency-injected
@@ -254,10 +255,11 @@ async def upload_document(
     scope_id: UUID,
     file: UploadFile = File(...),
     tag_ids: Optional[str] = Form(None),  # Comma-separated tag IDs from form data
+    auto_process: bool = Form(True),  # Automatically queue for processing
     db: AsyncSession = Depends(get_db),
     storage: BaseFileStorage = Depends(get_storage),
 ) -> DocumentUploadResponse:
-    """Upload a new document to a scope with optional tags."""
+    """Upload a new document to a scope with optional tags and auto-processing."""
     # Verify scope exists
     scope_query = select(Scope).where(Scope.id == scope_id)
     scope = await db.scalar(scope_query)
@@ -442,6 +444,22 @@ async def upload_document(
     await db.commit()
     await db.refresh(document, attribute_names=["tags"])
 
+    # Queue document for processing if auto_process is enabled
+    if auto_process:
+        try:
+            publisher = get_publisher()
+            await publisher.publish_document(
+                document_id=document.id,
+                scope_id=scope_id,
+            )
+            logger.info(f"Queued document {document.id} for processing")
+        except HTTPException:
+            # Publisher not initialized (processing disabled) - skip
+            logger.debug("Processing disabled, skipping auto-queue")
+        except Exception as e:
+            # Log error but don't fail the upload
+            logger.warning(f"Failed to queue document for processing: {e}")
+
     # Convert tags to TagResponse objects
     tag_responses = [
         TagResponse(
@@ -577,17 +595,53 @@ async def delete_document(
             detail={"error": {"code": "NOT_FOUND", "message": "Document not found"}},
         )
 
+    # Capture document info before deletion for cleanup notification
+    doc_scope_id = document.scope_id
+    doc_storage_path = document.storage_path
+    doc_file_extension = document.file_extension
+    doc_original_name = document.original_name
+
+    # Extract RAGFlow document ID from processing_result if available
+    # Structure: {"processor_name": {"ragflow": {"ragflow_document_id": "xxx"}}}
+    ragflow_document_id: str | None = None
+    if document.processing_result:
+        for processor_result in document.processing_result.values():
+            if isinstance(processor_result, dict):
+                ragflow_data = processor_result.get("ragflow", {})
+                if isinstance(ragflow_data, dict) and ragflow_data.get("ragflow_document_id"):
+                    ragflow_document_id = ragflow_data.get("ragflow_document_id")
+                    break
+
     # Delete from storage if requested
     if delete_storage:
         try:
             await storage.delete_file(document.storage_path)
-        except Exception:
+        except Exception as e:
             # Log error but continue with database deletion
-            pass
+            logger.warning(f"Failed to delete file from storage: {e}")
 
     # Delete from database
     await db.delete(document)
     await db.commit()
+
+    # Notify processors about deletion (for cleanup like removing embeddings)
+    try:
+        publisher = get_publisher()
+        await publisher.publish_delete(
+            document_id=document_id,
+            scope_id=doc_scope_id,
+            storage_path=doc_storage_path,
+            file_extension=doc_file_extension,
+            original_name=doc_original_name,
+            ragflow_document_id=ragflow_document_id,
+        )
+        logger.info(f"Published delete notification for document {document_id}")
+    except HTTPException:
+        # Publisher not initialized (processing disabled) - skip notification
+        logger.debug("Processing disabled, skipping delete notification")
+    except Exception as e:
+        # Log error but don't fail the deletion
+        logger.warning(f"Failed to publish delete notification: {e}")
 
     return None
 
@@ -629,6 +683,45 @@ async def update_document_status(
             document.doc_metadata.update(status_update.metadata)
         else:
             document.doc_metadata = status_update.metadata
+
+    # Update processing_result if provided
+    if status_update.processing_result:
+        document.processing_result = status_update.processing_result
+
+    # Update error_message if provided
+    if status_update.error_message is not None:
+        document.error_message = status_update.error_message
+
+    # On successful processing, remove previous documents with unique tags
+    if status_update.status == "processed" and old_status != "processed":
+        UNIQUE_TAGS = {"xlsx_z_lekami"}
+        doc_tag_names = {tag.name for tag in document.tags}
+        matching_unique = doc_tag_names & UNIQUE_TAGS
+
+        for tag_name in matching_unique:
+            old_docs_query = (
+                select(Document)
+                .join(Document.tags)
+                .where(
+                    Document.scope_id == document.scope_id,
+                    Document.id != document.id,
+                    Tag.name == tag_name,
+                )
+            )
+            old_docs_result = await db.execute(old_docs_query)
+            old_docs = old_docs_result.scalars().all()
+
+            for old_doc in old_docs:
+                logger.info(
+                    f"Removing old document '{old_doc.original_name}' "
+                    f"(replaced by '{document.original_name}', tag '{tag_name}')"
+                )
+                try:
+                    storage = get_storage()
+                    await storage.delete_file(old_doc.storage_path)
+                except Exception as e:
+                    logger.warning(f"Failed to delete old file from storage: {e}")
+                await db.delete(old_doc)
 
     await db.commit()
     await db.refresh(document)

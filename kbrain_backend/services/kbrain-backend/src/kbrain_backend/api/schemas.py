@@ -204,6 +204,7 @@ class DocumentResponse(DocumentBase):
     processed_at: Optional[datetime] = None
     error_message: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = Field(None, validation_alias="doc_metadata")
+    processing_result: Optional[Dict[str, Any]] = None
     tags: Optional[List[TagResponse]] = None
     created_at: datetime
     updated_at: datetime
@@ -251,6 +252,8 @@ class DocumentStatusUpdate(BaseModel):
 
     status: str = Field(..., pattern="^(added|processing|processed|failed)$")
     metadata: Optional[Dict[str, Any]] = None
+    processing_result: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
 
 
 class DocumentMetadataUpdate(BaseModel):

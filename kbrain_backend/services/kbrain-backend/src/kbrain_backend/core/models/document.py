@@ -60,6 +60,9 @@ class Document(Base):
     # Additional metadata
     doc_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # Processing result (output from processors - extracted text, embeddings info, etc.)
+    processing_result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=datetime.utcnow

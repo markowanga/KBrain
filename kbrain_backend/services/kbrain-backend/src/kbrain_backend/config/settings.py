@@ -56,6 +56,21 @@ class Settings(BaseSettings):
     rabbitmq_queue_name: str = "document_processing"
     rabbitmq_prefetch_count: int = 10
 
+    # OpenAI (for document/image processing)
+    openai_api_key: Optional[str] = None
+    openai_base_url: str = "https://api.openai.com/v1/chat/completions"
+    openai_model: str = "gpt-5.2-2025-12-11"
+
+    # XLSX Medication Processor
+    xlsx_medication_service_url: Optional[str] = None
+
+    # RAGFlow
+    ragflow_url: Optional[str] = None
+    ragflow_api_key: Optional[str] = None
+    ragflow_dataset_id: Optional[str] = None
+    ragflow_wait_for_parsing: bool = True
+    ragflow_max_wait: float = 300.0
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False
     )

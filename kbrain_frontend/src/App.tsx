@@ -145,32 +145,9 @@ function App() {
       {/* Header */}
       <header className="bg-white shadow-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-3">
-            {/* Logo */}
-            <svg className="w-10 h-10" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="brainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#2563eb" />
-                  <stop offset="100%" stopColor="#4f46e5" />
-                </linearGradient>
-              </defs>
-              {/* Brain shape */}
-              <path d="M50 15 C35 15 25 25 25 35 C20 35 15 40 15 45 C15 50 18 54 22 56 C22 62 25 68 30 72 C35 76 42 78 50 78 C58 78 65 76 70 72 C75 68 78 62 78 56 C82 54 85 50 85 45 C85 40 80 35 75 35 C75 25 65 15 50 15 Z" fill="url(#brainGradient)" stroke="url(#brainGradient)" strokeWidth="2"/>
-              {/* Brain folds */}
-              <path d="M35 30 Q40 35 35 40" stroke="white" strokeWidth="2" fill="none" opacity="0.6"/>
-              <path d="M50 25 Q55 30 50 35" stroke="white" strokeWidth="2" fill="none" opacity="0.6"/>
-              <path d="M65 30 Q60 35 65 40" stroke="white" strokeWidth="2" fill="none" opacity="0.6"/>
-              <path d="M40 50 Q45 55 40 60" stroke="white" strokeWidth="2" fill="none" opacity="0.6"/>
-              <path d="M60 50 Q55 55 60 60" stroke="white" strokeWidth="2" fill="none" opacity="0.6"/>
-              {/* Knowledge dots */}
-              <circle cx="45" cy="45" r="2" fill="white" opacity="0.8"/>
-              <circle cx="55" cy="45" r="2" fill="white" opacity="0.8"/>
-              <circle cx="50" cy="55" r="2" fill="white" opacity="0.8"/>
-            </svg>
-            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-              KBrain
-            </h1>
-          </div>
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
+            Knowledge Manager
+          </h1>
         </div>
       </header>
 
